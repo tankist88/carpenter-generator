@@ -212,12 +212,12 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         Iterator<GeneratedArgument> iterator = inner.getArguments().iterator();
         while (iterator.hasNext()) {
             GeneratedArgument arg = iterator.next();
-            if (arg.getGenerated() != null && arg.getInterfacesHierarchy().contains("java.util.List")) {
+            if (arg.getGenerated() != null && arg.getGenericString() != null && arg.getInterfacesHierarchy().contains("java.util.List")) {
                 sb.append("ArgumentMatchers.<").append(getLastClassShort(arg.getGenericString())).append(">anyList()");
                 if(!isPrimitive(arg.getGenericString())) {
                     imports.add(TypeHelper.createImportInfo(arg.getGenericString(), callInfo.getClassName()));
                 }
-            } else if (arg.getGenerated() != null && arg.getInterfacesHierarchy().contains("java.util.Set")) {
+            } else if (arg.getGenerated() != null && arg.getGenericString() != null && arg.getInterfacesHierarchy().contains("java.util.Set")) {
                 sb.append("ArgumentMatchers.<").append(getLastClassShort(arg.getGenericString())).append(">anySet()");
                 if(!isPrimitive(arg.getGenericString())) {
                     imports.add(TypeHelper.createImportInfo(arg.getGenericString(), callInfo.getClassName()));
@@ -249,10 +249,8 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 imports.add(TypeHelper.createImportInfo(mn.getClassName(), callInfo.getClassName()));
             }
         } else {
-            sb.append("(").append(getLastClassShort(arg.getClassName())).append(") null");
-            if(!isPrimitive(arg.getClassName())) {
-                imports.add(TypeHelper.createImportInfo(arg.getClassName(), callInfo.getClassName()));
-            }
+            sb.append("(").append(getLastClassShort(arg.getNearestInstantAbleClass())).append(") null");
+            imports.add(TypeHelper.createImportInfo(arg.getNearestInstantAbleClass(), callInfo.getClassName()));
         }
     }
 
