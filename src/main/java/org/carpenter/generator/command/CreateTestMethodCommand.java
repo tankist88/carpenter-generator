@@ -145,7 +145,14 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             imports.add(TypeHelper.createImportInfo(innerFirst.getReturnArg().getClassName(), callInfo.getClassName()));
         }
         sb.append(getClassShort(innerFirst.getReturnArg().getClassName())).append("[] values = {\n");
-        Iterator<MethodCallInfo> methodCallInfoIterator = innerSet.iterator();
+        List<MethodCallInfo> methodCallInfoList = new ArrayList<>(innerSet);
+        Collections.sort(methodCallInfoList, new Comparator<MethodCallInfo>() {
+            @Override
+            public int compare(MethodCallInfo o1, MethodCallInfo o2) {
+                return (o1.getCallTime() > o2.getCallTime()) ? -1 : 1;
+            }
+        });
+        Iterator<MethodCallInfo> methodCallInfoIterator = methodCallInfoList.iterator();
         while(methodCallInfoIterator.hasNext()) {
             MethodCallInfo m = methodCallInfoIterator.next();
             sb.append(TAB + TAB + TAB + TAB + TAB);
