@@ -1,5 +1,6 @@
 package org.carpenter.generator.util;
 
+import org.carpenter.core.dto.argument.GeneratedArgument;
 import org.carpenter.core.dto.unit.field.FieldProperties;
 import org.carpenter.core.dto.unit.method.MethodCallInfo;
 import org.carpenter.generator.dto.unit.imports.ImportInfo;
@@ -52,25 +53,34 @@ public class TypeHelper {
     }
 
     private static FieldProperties getSameType(MethodCallInfo callInfo, Set<FieldProperties> availableTypes) {
-        FieldProperties result = null;
+        FieldProperties fp = getSameType(callInfo, availableTypes, TypeCategory.CLASS);
+        return fp != null ? fp : getSameType(callInfo, availableTypes, TypeCategory.INTERFACE);
+    }
+
+    private static FieldProperties getSameType(MethodCallInfo callInfo, Set<FieldProperties> availableTypes, TypeCategory typeCategory) {
+        Map<FieldProperties, Integer> rangeMap = new HashMap<>();
         int currentMatch = 0;
-        for(FieldProperties sc : availableTypes) {
-            int match = matchCountInServices(callInfo, sc, TypeCategory.CLASS);
-            if(match > currentMatch){
+        for (FieldProperties sc : availableTypes) {
+            int match = matchCountInServices(callInfo, sc, typeCategory);
+            if(match > 0 && match >= currentMatch) {
                 currentMatch = match;
-                result = sc;
+                rangeMap.put(sc, match);
             }
         }
-        if(result != null) return result;
-        currentMatch = 0;
-        for(FieldProperties sc : availableTypes) {
-            int match = matchCountInServices(callInfo, sc, TypeCategory.INTERFACE);
-            if(match > currentMatch){
-                currentMatch = match;
-                result = sc;
+        List<FieldProperties> candidates = new ArrayList<>();
+        for (Map.Entry<FieldProperties, Integer> entry : rangeMap.entrySet()) {
+            if (entry.getValue() == currentMatch) candidates.add(entry.getKey());
+        }
+        if (candidates.size() == 1) return candidates.get(0);
+        for (FieldProperties fp : candidates) {
+            for(GeneratedArgument ga : callInfo.getArguments()) {
+                if(fp.getGenericString() == null) continue;
+                if(fp.getGenericString().contains(ga.getNearestInstantAbleClass())) {
+                    return fp;
+                }
             }
         }
-        return result;
+        return null;
     }
 
     public static String clearClassName(String className) {
