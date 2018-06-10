@@ -8,8 +8,7 @@ import org.carpenter.generator.enums.TypeCategory;
 
 import java.util.*;
 
-import static org.object2source.util.GenerationUtil.getInstName;
-import static org.object2source.util.GenerationUtil.isPrimitive;
+import static org.object2source.util.GenerationUtil.*;
 
 public class TypeHelper {
     public static String determineVarName(MethodCallInfo callInfo, Set<FieldProperties> serviceClasses) {
@@ -83,15 +82,19 @@ public class TypeHelper {
         return null;
     }
 
-    public static String clearClassName(String className) {
-        return className.replaceAll("\\$", ".");
-    }
-
     public static ImportInfo createImportInfo(String importClass, String ownerClass) {
         ImportInfo importInfo = new ImportInfo();
         importInfo.setClassName(ownerClass);
         importInfo.setUnitName(importClass);
-        importInfo.setBody("import " + clearClassName(importClass) + ";\n");
+        importInfo.setBody("import " + getClearedClassName(importClass) + ";\n");
         return importInfo;
+    }
+
+    public static String typeOfGenArg(GeneratedArgument arg) {
+        return arg != null ? arg.getNearestInstantAbleClass() : null;
+    }
+
+    public static boolean simpleType(GeneratedArgument arg) {
+        return typeOfGenArg(arg) != null && isPrimitive(typeOfGenArg(arg)) || isWrapper(typeOfGenArg(arg)) || typeOfGenArg(arg).equals(String.class.getName());
     }
 }

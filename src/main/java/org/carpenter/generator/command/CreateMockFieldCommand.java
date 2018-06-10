@@ -5,7 +5,6 @@ import org.carpenter.core.dto.unit.field.FieldProperties;
 import org.carpenter.core.dto.unit.method.MethodCallInfo;
 import org.carpenter.generator.dto.unit.field.FieldExtInfo;
 import org.carpenter.generator.enums.TestFieldCategory;
-import org.carpenter.generator.util.TypeHelper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,6 +13,7 @@ import java.util.List;
 import static org.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static org.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
 import static org.object2source.util.GenerationUtil.getClassShort;
+import static org.object2source.util.GenerationUtil.getClearedClassName;
 
 public class CreateMockFieldCommand extends AbstractReturnClassInfoCommand<FieldExtInfo> {
 
@@ -71,7 +71,7 @@ public class CreateMockFieldCommand extends AbstractReturnClassInfoCommand<Field
         else fieldSb.append(TAB + "@Mock\n");
         fieldSb
                 .append(TAB + "private ")
-                .append(testClass ? getClassShort(typeName) : TypeHelper.clearClassName(typeName))
+                .append(testClass ? getClassShort(typeName) : getClearedClassName(typeName))
                 .append(" ")
                 .append(result.getUnitName())
                 .append(";\n");

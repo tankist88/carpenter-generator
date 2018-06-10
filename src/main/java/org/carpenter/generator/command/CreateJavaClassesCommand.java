@@ -64,6 +64,7 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                 classBuilder.append("import org.mockito.stubbing.Answer;\n");
                 classBuilder.append("import org.mockito.Spy;\n");
                 classBuilder.append("import org.mockito.Mock;\n\n");
+                classBuilder.append("import static org.testng.Assert.assertEquals;\n\n");
                 classBuilder.append("import static org.mockito.ArgumentMatchers.*;\n");
                 classBuilder.append("import static org.mockito.Mockito.*;\n");
                 classBuilder.append("import static org.mockito.MockitoAnnotations.initMocks;\n\n");

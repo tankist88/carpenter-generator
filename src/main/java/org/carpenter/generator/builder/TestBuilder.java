@@ -10,12 +10,14 @@ import java.util.*;
 public class TestBuilder {
     private Map<String, Set<ClassExtInfo>> classInfoMap;
     private Map<String, Set<String>> providerSignatureMap;
+    private Map<String, Set<ClassExtInfo>> dataProviders;
 
     private List<ReturnCommand> commands;
 
     public TestBuilder() {
         this.classInfoMap = new HashMap<>();
         this.providerSignatureMap = new HashMap<>();
+        this.dataProviders = new HashMap<>();
         this.commands = new ArrayList<>();
     }
 
@@ -53,7 +55,7 @@ public class TestBuilder {
     }
 
     public TestBuilder appendTestMethod(MethodCallInfo callInfo) {
-        commands.add(new CreateTestMethodCommand(callInfo, providerSignatureMap));
+        commands.add(new CreateTestMethodCommand(callInfo, providerSignatureMap, dataProviders));
         return this;
     }
 

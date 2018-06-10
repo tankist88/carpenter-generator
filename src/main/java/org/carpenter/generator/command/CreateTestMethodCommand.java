@@ -22,10 +22,12 @@ import java.util.*;
 import static java.util.Collections.singletonList;
 import static org.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static org.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
+import static org.carpenter.generator.util.TypeHelper.simpleType;
+import static org.carpenter.generator.util.TypeHelper.typeOfGenArg;
 import static org.object2source.util.GenerationUtil.*;
 
 public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<ClassExtInfo> {
-    private static final int DATA_PROVIDER_MAX_LENGTH_IN_METHODS = 20;
+    private static final int DATA_PROVIDER_MAX_LENGTH_IN_METHODS = 30;
 
     private StringBuilder builder;
 
@@ -37,13 +39,13 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private Map<String, Set<ClassExtInfo>> dataProviders;
     private Set<ImportInfo> imports;
 
-    public CreateTestMethodCommand(MethodCallInfo callInfo, Map<String, Set<String>> providerSignatureMap) {
+    public CreateTestMethodCommand(MethodCallInfo callInfo, Map<String, Set<String>> providerSignatureMap, Map<String, Set<ClassExtInfo>> dataProviders) {
         this.callInfo = callInfo;
         this.providerSignatureMap = providerSignatureMap;
         this.props = GenerationPropertiesFactory.loadProps();
         this.builder = new StringBuilder();
         this.imports = new HashSet<>();
-        this.dataProviders = new HashMap<>();
+        this.dataProviders = dataProviders;
     }
 
     @Override
@@ -88,23 +90,37 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         for (String mock : createMocks(callInfo, serviceClasses, testClassHierarchy)) builder.append(mock);
 
         appendTestCall(callInfo);
+        appendSimpleAssert(callInfo);
+
+        builder.append(TAB + "}\n");
 
         methods = singletonList(new MethodExtInfo(callInfo.getClassName(), testMethodName, builder.toString()));
     }
 
+    private void appendSimpleAssert(MethodCallInfo callInfo) {
+        if(!simpleType(callInfo.getReturnArg())) return;
+        builder.append(TAB + TAB).append("assertEquals(result, ");
+        appendDataProvider(builder, callInfo.getReturnArg());
+        builder.append(");\n");
+    }
+
     private void appendTestCall(MethodCallInfo callInfo) {
-        if(Modifier.isStatic(callInfo.getMethodModifiers())) {
-            builder.append(TAB + TAB).append(getClassShort(callInfo.getClassName())).append(".").append(callInfo.getUnitName()).append("(");
-        } else {
-            builder.append(TAB + TAB + TEST_INST_VAR_NAME + ".").append(callInfo.getUnitName()).append("(");
+        builder.append(TAB + TAB);
+        if (simpleType(callInfo.getReturnArg())) {
+            builder.append(typeOfGenArg(callInfo.getReturnArg())).append(" result = ");
         }
+        if(Modifier.isStatic(callInfo.getMethodModifiers())) {
+            builder.append(getClassShort(callInfo.getClassName())).append(".");
+        } else {
+            builder.append(TEST_INST_VAR_NAME + ".");
+        }
+        builder.append(callInfo.getUnitName()).append("(");
         Iterator<GeneratedArgument> iterator = callInfo.getArguments().iterator();
         while (iterator.hasNext()) {
             appendDataProvider(builder, iterator.next());
             if(iterator.hasNext()) builder.append(", ");
         }
         builder.append(");\n");
-        builder.append(TAB + "}\n");
     }
 
     private Set<String> createMocks(MethodCallInfo callInfo, Set<FieldProperties> serviceClasses, Set<FieldProperties> testClassHierarchy) {
@@ -230,13 +246,13 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                     imports.add(TypeHelper.createImportInfo(arg.getGenericString(), callInfo.getClassName()));
                 }
             } else if (arg.getGenerated() != null) {
-                String clearedType = TypeHelper.clearClassName(arg.getClassName());
+                String clearedType = getClearedClassName(arg.getClassName());
                 sb.append("any(").append(getLastClassShort(clearedType)).append(".class").append(")");
                 if(!isPrimitive(clearedType)) {
                     imports.add(TypeHelper.createImportInfo(clearedType, callInfo.getClassName()));
                 }
             } else {
-                String clearedType = TypeHelper.clearClassName(arg.getClassName());
+                String clearedType = getClearedClassName(arg.getClassName());
                 sb.append("nullable(").append(getLastClassShort(clearedType)).append(".class").append(")");
                 if(!isPrimitive(clearedType)) {
                     imports.add(TypeHelper.createImportInfo(clearedType, callInfo.getClassName()));
