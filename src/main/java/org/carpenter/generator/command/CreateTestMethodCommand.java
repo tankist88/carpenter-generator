@@ -6,6 +6,7 @@ import org.carpenter.core.dto.unit.method.MethodBaseInfo;
 import org.carpenter.core.dto.unit.method.MethodCallInfo;
 import org.carpenter.core.property.GenerationProperties;
 import org.carpenter.core.property.GenerationPropertiesFactory;
+import org.carpenter.generator.TestGenerator;
 import org.carpenter.generator.dto.ProviderNextPartInfo;
 import org.carpenter.generator.dto.SeparatedInners;
 import org.carpenter.generator.dto.unit.ClassExtInfo;
@@ -82,7 +83,10 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         Set<FieldProperties> testClassHierarchy = new HashSet<>();
         testClassHierarchy.add(testProp);
 
-        builder.append(TAB + "@Test\n")
+        builder.append(TAB + "@Generated(value = \"")
+               .append(TestGenerator.class.getName())
+               .append("\")\n")
+               .append(TAB + "@Test\n")
                .append(TAB + "public void ")
                .append(testMethodName)
                .append(" throws java.lang.Exception {\n");

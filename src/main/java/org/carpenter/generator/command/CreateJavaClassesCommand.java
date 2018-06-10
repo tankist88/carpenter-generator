@@ -69,6 +69,9 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                 classBuilder.append("import static org.mockito.Mockito.*;\n");
                 classBuilder.append("import static org.mockito.MockitoAnnotations.initMocks;\n\n");
             }
+
+            classBuilder.append("import javax.annotation.Generated;\n\n");
+
             for(ClassExtInfo unit : groupList) {
                 if(unit instanceof ImportInfo) {
                     classBuilder.append(unit.getBody());
@@ -78,6 +81,7 @@ public class CreateJavaClassesCommand extends AbstractCommand {
 
             String postfix = fullClassName.startsWith(dataProviderClassPattern) ? "" : GENERATED_TEST_CLASS_POSTFIX;
 
+            classBuilder.append("@Generated(value = \"org.carpenter.generator.TestGenerator\")\n");
             classBuilder.append("public class ").append(className).append(postfix).append(" {\n\n");
 
             for(ClassExtInfo unit : groupList) {
