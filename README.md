@@ -50,6 +50,7 @@ data.providers.excluded.packages_6=org.eclipse
 
 Output unit tests:
 ```java
+@Generated(value = "org.carpenter.generator.TestGenerator")
 public class LibraryServiceGeneratedTest {
 
     @Spy
@@ -62,49 +63,56 @@ public class LibraryServiceGeneratedTest {
     @Mock
     private org.example.webapp.simpleweb.service.SubscribeService subscribeService;
 
+    @Generated(value = "org.carpenter.generator.TestGenerator")
     @Test
     public void testGetBooks_1() throws java.lang.Exception {
-        doNothing().when(subscribeService).setPlan(any(ExtPlan.class));
-        doReturn(CommonDataProvider_24.getClient__1305902843()).when(subscribeService).getClient();
         doNothing().when(subscribeService).sendClientNotification(any(ExtPlan.class));
+        doNothing().when(subscribeService).setPlan(any(ExtPlan.class));
+        doReturn(CommonDataProvider_4.getClient__1305902843()).when(subscribeService).getClient();
         testInstance.getBooks();
+        verify(subscribeService, atLeastOnce()).sendClientNotification(any(ExtPlan.class));
+        verify(subscribeService, atLeastOnce()).setPlan(any(ExtPlan.class));
+        verify(subscribeService, atLeastOnce()).getClient();
     }
 
+    @Generated(value = "org.carpenter.generator.TestGenerator")
     @Test
     public void testGetSummaryStr_1() throws java.lang.Exception {
-        doReturn(CommonDataProvider_27.getLibrarySummary_899664243()).when(testInstance).getSummary();
-        testInstance.getSummaryStr();
+        doReturn(CommonDataProvider_3.getLibrarySummary_899664243()).when(testInstance).getSummary();
+        java.lang.String result = testInstance.getSummaryStr();
+        verify(testInstance, atLeastOnce()).getSummary();
+        assertEquals(result, CommonDataProvider_4.getString_225853195());
     }
 
+    @Generated(value = "org.carpenter.generator.TestGenerator")
     @Test
     public void testGetSummary_1() throws java.lang.Exception {
-        doReturn(CommonDataProvider_25.getArrayList_2118523509()).when(testInstance).getBooks();
-
+        doReturn(CommonDataProvider_2.getArrayList_2118523509()).when(testInstance).getBooks();
         doAnswer(new Answer() {
             private int count = 0;
             private String[] values = {
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941(),
-                    CommonDataProvider_26.getString_1114439941()
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941(),
+                    CommonDataProvider_1.getString_1114439941()
             };
             @Override
             public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
@@ -113,8 +121,9 @@ public class LibraryServiceGeneratedTest {
                 return result;
             }
         }).when(isbnService).getBookISBN(any(Integer.class));
-
         testInstance.getSummary();
+        verify(testInstance, atLeastOnce()).getBooks();
+        verify(isbnService, atLeastOnce()).getBookISBN(any(Integer.class));
     }
 
     @BeforeMethod
