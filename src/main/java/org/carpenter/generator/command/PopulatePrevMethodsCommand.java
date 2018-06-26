@@ -56,7 +56,7 @@ public class PopulatePrevMethodsCommand extends AbstractReturnClassInfoCommand<C
             String dataProviderClassPattern = props.getDataProviderClassPattern();
             String commonClassName = dataProviderClassPattern + COMMON_UTIL_POSTFIX;
             Set<ClassExtInfo> commonMethods = new HashSet<>();
-            for(ProviderInfo p : AssigmentUtil.getCommonMethods(TAB)) {
+            for (ProviderInfo p : AssigmentUtil.getCommonMethods(TAB)) {
                 commonMethods.add(ConvertUtil.toMethodExtInfo(commonClassName, p));
             }
             existsMethodsMap.put(commonClassName, commonMethods);
@@ -64,24 +64,24 @@ public class PopulatePrevMethodsCommand extends AbstractReturnClassInfoCommand<C
                 boolean allowedFiles = (f.getName().endsWith(GENERATED_TEST_CLASS_POSTFIX + ".java") ||
                         f.getName().startsWith(getClassShort(dataProviderClassPattern))) &&
                         !f.getName().endsWith(COMMON_UTIL_POSTFIX+ ".java");
-                if(!allowedFiles) continue;
+                if (!allowedFiles) continue;
                 CompilationUnit compilationUnit = JavaParser.parse(f);
                 TypeDeclaration type = compilationUnit.getTypes().get(0);
                 String fullClassName = compilationUnit.getPackage().getName() + "." + type.getName();
-                if(fullClassName.contains(GENERATED_TEST_CLASS_POSTFIX)) {
+                if (fullClassName.contains(GENERATED_TEST_CLASS_POSTFIX)) {
                     fullClassName = fullClassName.substring(0, fullClassName.indexOf(GENERATED_TEST_CLASS_POSTFIX));
                 }
                 Set<ClassExtInfo> units = existsMethodsMap.get(fullClassName);
-                if(units == null) {
+                if (units == null) {
                     units = new HashSet<>();
                     existsMethodsMap.put(fullClassName, units);
                 }
-                for(Node node : type.getChildrenNodes()) {
-                    if(node instanceof FieldDeclaration) {
+                for (Node node : type.getChildrenNodes()) {
+                    if (node instanceof FieldDeclaration) {
                         FieldExtInfo field = new FieldExtInfo();
                         field.setClassName(fullClassName);
-                        for(Node v : node.getChildrenNodes()) {
-                            if(v instanceof VariableDeclarator) {
+                        for (Node v : node.getChildrenNodes()) {
+                            if (v instanceof VariableDeclarator) {
                                 field.setUnitName(v.toString());
                                 break;
                             }
@@ -90,23 +90,23 @@ public class PopulatePrevMethodsCommand extends AbstractReturnClassInfoCommand<C
                                 .replaceAll("\r\n", "\n")
                                 .replaceAll("\n",  "\n" + TAB) + "\n");
                         units.add(field);
-                    } else if(node instanceof MethodDeclaration) {
+                    } else if (node instanceof MethodDeclaration) {
                         MethodExtInfo method = new MethodExtInfo();
                         method.setClassName(fullClassName);
                         StringBuilder paramStrBuilder = new StringBuilder();
                         Iterator<Parameter> iterator = ((MethodDeclaration) node).getParameters().iterator();
                         while (iterator.hasNext()) {
                             paramStrBuilder.append(iterator.next().toString());
-                            if(iterator.hasNext()) paramStrBuilder.append(", ");
+                            if (iterator.hasNext()) paramStrBuilder.append(", ");
                         }
                         method.setUnitName(((MethodDeclaration) node).getName() + "(" + paramStrBuilder.toString() + ")");
                         method.setBody(TAB + node.toString()
                                 .replaceAll("\r\n", "\n")
                                 .replaceAll("\n", "\n" + TAB) + "\n");
                         units.add(method);
-                        if(fullClassName.startsWith(dataProviderClassPattern)) {
+                        if (fullClassName.startsWith(dataProviderClassPattern)) {
                             Set<String> providersSignatures = providerSignatureMap.get(fullClassName);
-                            if(providersSignatures == null) {
+                            if (providersSignatures == null) {
                                 providersSignatures = new HashSet<>();
                                 providerSignatureMap.put(fullClassName, providersSignatures);
                             }
