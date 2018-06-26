@@ -6,7 +6,6 @@ import org.carpenter.core.dto.unit.method.MethodBaseInfo;
 import org.carpenter.core.dto.unit.method.MethodCallInfo;
 import org.carpenter.core.property.GenerationProperties;
 import org.carpenter.core.property.GenerationPropertiesFactory;
-import org.carpenter.generator.TestGenerator;
 import org.carpenter.generator.dto.PreparedMock;
 import org.carpenter.generator.dto.ProviderNextPartInfo;
 import org.carpenter.generator.dto.SeparatedInners;
@@ -91,10 +90,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         Set<FieldProperties> testClassHierarchy = new HashSet<>();
         testClassHierarchy.add(testProp);
 
-        builder.append(TAB + "@Generated(value = \"")
-               .append(TestGenerator.class.getName())
-               .append("\")\n")
-               .append(TAB + "@Test\n")
+        builder.append(TAB + "@Test\n")
                .append(TAB + "public void ")
                .append(testMethodName)
                .append(" throws java.lang.Exception {\n");
@@ -106,7 +102,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         }
 
         appendTestCall(callInfo);
-        appendMethodCallCheckAssert(mocks);
+        appendMethodCallVerification(mocks);
         appendResultCheckAssert(callInfo);
 
         builder.append(TAB + "}\n");
@@ -135,7 +131,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         }
     }
 
-    private void appendMethodCallCheckAssert(Set<PreparedMock> mocks) {
+    private void appendMethodCallVerification(Set<PreparedMock> mocks) {
         for (PreparedMock mock : mocks) {
             builder.append(mock.getVerify());
         }
@@ -224,7 +220,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
         StringBuilder verifyBuilder = new StringBuilder();
         verifyBuilder.append(TAB + TAB + "verify(");
-        verifyBuilder.append(varName).append(", atLeast(2)).").append(innerFirst.getUnitName());
+        verifyBuilder.append(varName).append(", atLeastOnce()).").append(innerFirst.getUnitName());
         appendMockArguments(mockBuilder, innerFirst, imports);
         appendMockArguments(verifyBuilder, innerFirst, imports);
         mockBuilder.append(";\n");

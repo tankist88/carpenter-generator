@@ -3,6 +3,7 @@ package org.carpenter.generator.command;
 import org.apache.commons.io.FileUtils;
 import org.carpenter.core.property.GenerationProperties;
 import org.carpenter.core.property.GenerationPropertiesFactory;
+import org.carpenter.generator.TestGenerator;
 import org.carpenter.generator.dto.unit.ClassExtInfo;
 import org.carpenter.generator.dto.unit.field.FieldExtInfo;
 import org.carpenter.generator.dto.unit.imports.ImportInfo;
@@ -42,20 +43,20 @@ public class CreateJavaClassesCommand extends AbstractCommand {
     private void saveJavaClassesAndPackages() throws IOException {
         String pathname = createAndReturnPathName(props);
         String dataProviderClassPattern = props.getDataProviderClassPattern();
-        for(String fullClassName : collectedTests.keySet()) {
+        for (String fullClassName : collectedTests.keySet()) {
             String className = getLastClassShort(fullClassName);
             String packageName = getPackage(fullClassName);
             String packageFileStruct = pathname + "/" + packageName.replaceAll("\\.", "/");
             FileUtils.forceMkdir(new File(packageFileStruct));
             Set<ClassExtInfo> units = collectedTests.get(fullClassName);
             List<ClassExtInfo> groupList = UnitClassifier.getSimilarClassInfoList(units);
-            if(units.size() != groupList.size()) {
+            if (units.size() != groupList.size()) {
                 throw new RuntimeException("Error while grouping units!");
             }
             StringBuilder classBuilder = new StringBuilder();
             classBuilder.append("package ").append(packageName).append(";\n\n");
 
-            if(!fullClassName.startsWith(dataProviderClassPattern)) {
+            if (!fullClassName.startsWith(dataProviderClassPattern)) {
                 classBuilder.append("import org.testng.annotations.Test;\n");
                 classBuilder.append("import org.testng.annotations.BeforeMethod;\n\n");
                 classBuilder.append("import org.mockito.ArgumentMatchers;\n");
@@ -72,8 +73,8 @@ public class CreateJavaClassesCommand extends AbstractCommand {
 
             classBuilder.append("import javax.annotation.Generated;\n\n");
 
-            for(ClassExtInfo unit : groupList) {
-                if(unit instanceof ImportInfo) {
+            for (ClassExtInfo unit : groupList) {
+                if (unit instanceof ImportInfo) {
                     classBuilder.append(unit.getBody());
                 }
             }
@@ -81,16 +82,16 @@ public class CreateJavaClassesCommand extends AbstractCommand {
 
             String postfix = fullClassName.startsWith(dataProviderClassPattern) ? "" : GENERATED_TEST_CLASS_POSTFIX;
 
-            classBuilder.append("@Generated(value = \"org.carpenter.generator.TestGenerator\")\n");
+            classBuilder.append("@Generated(value = \"").append(TestGenerator.class.getName()).append("\")\n");
             classBuilder.append("public class ").append(className).append(postfix).append(" {\n\n");
 
-            for(ClassExtInfo unit : groupList) {
-                if(unit instanceof FieldExtInfo) {
+            for (ClassExtInfo unit : groupList) {
+                if (unit instanceof FieldExtInfo) {
                     classBuilder.append(unit.getBody()).append("\n");
                 }
             }
-            for(ClassExtInfo unit : groupList) {
-                if(unit instanceof MethodExtInfo) {
+            for (ClassExtInfo unit : groupList) {
+                if (unit instanceof MethodExtInfo) {
                     classBuilder.append(unit.getBody()).append("\n");
                 }
             }

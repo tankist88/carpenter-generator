@@ -32,9 +32,8 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
         super.execute();
         try {
             objectDataList = loadObjectData();
-        } catch (Exception e) {
-            objectDataList = new ArrayList<>();
-            e.printStackTrace();
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
         }
     }
 
@@ -56,7 +55,7 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
             int byteReaded = dis.read(data);
             dis.close();
 
-            if(byteReaded != length) throw new DeserializationException("Can't deserialize object dump " + filename);
+            if (byteReaded != length) throw new DeserializationException("Can't deserialize object dump " + filename);
 
             MethodCallTraceInfo callTraceInfo = SerializationUtils.deserialize(data);
 
@@ -79,7 +78,7 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
                 }
             }
         }
-        for(Set<MethodCallTraceInfo> values : commonDataMap.values()) {
+        for (Set<MethodCallTraceInfo> values : commonDataMap.values()) {
             result.addAll(values);
         }
         return result;
