@@ -224,7 +224,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
         StringBuilder verifyBuilder = new StringBuilder();
         verifyBuilder.append(TAB + TAB + "verify(");
-        verifyBuilder.append(varName).append(", atLeast(2)).").append(innerFirst.getUnitName());
+        verifyBuilder.append(varName).append(", atLeastOnce()).").append(innerFirst.getUnitName());
         appendMockArguments(mockBuilder, innerFirst, imports);
         appendMockArguments(verifyBuilder, innerFirst, imports);
         mockBuilder.append(";\n");
