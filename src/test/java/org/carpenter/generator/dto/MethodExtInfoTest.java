@@ -29,7 +29,7 @@ public class MethodExtInfoTest {
         MethodExtInfo initMockMethod1 = new MethodExtInfo();
         initMockMethod1.setClassName("org.carpenter.collector.dto.Test");
         initMockMethod1.setUnitName(initMockMethodName1);
-        initMockMethod1.setBody(initMockMethodBuilder1.toString());
+//        initMockMethod1.setBody(initMockMethodBuilder1.toString());
 
         StringBuilder initMockMethodBuilder2 = new StringBuilder();
         String initMockMethodName2 = "init()";
@@ -45,7 +45,7 @@ public class MethodExtInfoTest {
         MethodExtInfo initMockMethod2 = new MethodExtInfo();
         initMockMethod2.setClassName("org.carpenter.collector.dto.Test");
         initMockMethod2.setUnitName(initMockMethodName2);
-        initMockMethod2.setBody(initMockMethodBuilder2.toString());
+//        initMockMethod2.setBody(initMockMethodBuilder2.toString());
 
         Set<ClassExtInfo> set = new HashSet<>();
 

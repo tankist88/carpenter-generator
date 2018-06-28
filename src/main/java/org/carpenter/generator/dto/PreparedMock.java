@@ -1,51 +1,54 @@
 package org.carpenter.generator.dto;
 
+import org.carpenter.generator.dto.source.MethodLine;
+
 import java.util.Objects;
 
 public class PreparedMock {
-    private String mock;
-    private String verify;
+    private MethodLine mock;
+    private MethodLine verify;
 
-    public PreparedMock(String mock, String verify) {
+    public PreparedMock(MethodLine mock, MethodLine verify) {
         this.mock = mock;
         this.verify = verify;
     }
 
-    public String getMock() {
+    public MethodLine getMock() {
         return mock;
     }
 
-    public void setMock(String mock) {
+    public void setMock(MethodLine mock) {
         this.mock = mock;
     }
 
-    public String getVerify() {
+    public MethodLine getVerify() {
         return verify;
     }
 
-    public void setVerify(String verify) {
+    public void setVerify(MethodLine verify) {
         this.verify = verify;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof PreparedMock)) return false;
+        if (o == null || getClass() != o.getClass()) return false;
         PreparedMock that = (PreparedMock) o;
-        return Objects.equals(getMock(), that.getMock()) &&
-                Objects.equals(getVerify(), that.getVerify());
+        return Objects.equals(mock, that.mock) &&
+                Objects.equals(verify, that.verify);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getMock(), getVerify());
+
+        return Objects.hash(mock, verify);
     }
 
     @Override
     public String toString() {
         return "PreparedMock{" +
-                "mock='" + mock + '\'' +
-                ", verify='" + verify + '\'' +
+                "mock=" + mock +
+                ", verify=" + verify +
                 '}';
     }
 }

@@ -7,6 +7,8 @@ import org.carpenter.generator.command.*;
 import org.carpenter.generator.dto.unit.ClassExtInfo;
 import org.carpenter.generator.enums.TestFieldCategory;
 import org.carpenter.generator.extension.assertext.AssertExtension;
+import org.carpenter.generator.extension.assertext.CalendarAssertExtension;
+import org.carpenter.generator.extension.assertext.DateAssertExtension;
 import org.carpenter.generator.extension.assertext.SimpleAssertExtension;
 
 import java.util.*;
@@ -34,6 +36,8 @@ public class TestBuilder {
 
     private void initDefaultExtensions() {
         registerExtension(new SimpleAssertExtension());
+        registerExtension(new CalendarAssertExtension());
+        registerExtension(new DateAssertExtension());
     }
 
     private void initAssertExtensionsFromClassPath() {
