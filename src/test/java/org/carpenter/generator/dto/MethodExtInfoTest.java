@@ -75,7 +75,7 @@ public class MethodExtInfoTest {
 
         MethodExtInfo methodExtInfo = new MethodExtInfo();
         methodExtInfo.setClassName("Test");
-        methodExtInfo.setUnitName("testGetSortedTermConditions__2080488256");
+        methodExtInfo.setUnitName("testGetSortedTermConditions__2080488256()");
         methodExtInfo.setBody(body);
 
         MethodSource methodSource = methodExtInfo.createMethodSource();

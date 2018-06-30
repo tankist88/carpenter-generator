@@ -83,10 +83,18 @@ public class TypeHelper {
     }
 
     public static ImportInfo createImportInfo(String importClass, String ownerClass) {
+        return createImportInfo(importClass, ownerClass, false);
+    }
+
+    public static ImportInfo createImportInfo(String importClass, String ownerClass, boolean isStatic) {
         ImportInfo importInfo = new ImportInfo();
         importInfo.setClassName(ownerClass);
         importInfo.setUnitName(importClass);
-        importInfo.setBody("import " + getClearedClassName(importClass) + ";\n");
+        if (isStatic) {
+            importInfo.setBody("import static " + getClearedClassName(importClass) + ";\n");
+        } else {
+            importInfo.setBody("import " + getClearedClassName(importClass) + ";\n");
+        }
         return importInfo;
     }
 

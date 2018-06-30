@@ -37,7 +37,6 @@ public class TestGenerator {
     }
 
     private int generate() {
-        int generatedTests = 0;
         TestBuilder testBuilder = new TestBuilder();
         testBuilder.appendPreviousGenerated();
         for(MethodCallInfo callInfo : loadDataService.loadObjectDump()) {
@@ -46,11 +45,8 @@ public class TestGenerator {
             testBuilder.appendMockField(callInfo);
             testBuilder.appendInitMock(callInfo);
             testBuilder.appendTestMethod(callInfo);
-            generatedTests++;
         }
-        testBuilder.build();
-
-        return generatedTests;
+        return testBuilder.build();
     }
 
     public static void main(String args[]) {

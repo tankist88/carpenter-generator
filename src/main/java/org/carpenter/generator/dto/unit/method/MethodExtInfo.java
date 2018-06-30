@@ -1,7 +1,5 @@
 package org.carpenter.generator.dto.unit.method;
 
-import org.carpenter.core.property.GenerationProperties;
-import org.carpenter.core.property.GenerationPropertiesFactory;
 import org.carpenter.generator.dto.source.MethodLine;
 import org.carpenter.generator.dto.source.MethodSource;
 import org.carpenter.generator.dto.source.Variable;
@@ -10,21 +8,41 @@ import org.carpenter.generator.dto.unit.AbstractUnitExtInfo;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.carpenter.generator.command.CreateTestMethodCommand.HASH_CODE_SEPARATOR;
+import static org.carpenter.generator.command.CreateTestMethodCommand.TEST_METHOD_PREFIX;
 import static org.carpenter.generator.dto.source.MethodLine.PLACE_HOLDER;
-import static org.object2source.util.GenerationUtil.getClassShort;
+import static org.object2source.util.GenerationUtil.upFirst;
 
 public class MethodExtInfo extends AbstractUnitExtInfo {
     public MethodExtInfo() {
     }
-    public MethodExtInfo(String className, String methodName, String body) {
-        super(className, methodName, body);
+    public MethodExtInfo(String className, String unitName, String body) {
+        super(className, validateUnitName(unitName), body);
+    }
+
+    public String createCommonMethodName() {
+        if(getUnitName().startsWith(TEST_METHOD_PREFIX)) {
+            return getUnitName().substring(0, getUnitName().indexOf(HASH_CODE_SEPARATOR));
+        } else {
+            return "common" + upFirst(getUnitName());
+        }
+    }
+
+    private static String validateUnitName(String unitName) {
+        if(!unitName.contains("(") || !unitName.contains(")")) {
+            throw new IllegalArgumentException("Unit name for method will be contains arguments signature!");
+        }
+        return unitName;
+    }
+
+    @Override
+    public void setUnitName(String unitName) {
+        super.setUnitName(validateUnitName(unitName));
     }
 
     public boolean hasMultipleMock() {
         for (MethodLine l : createMethodSource().getLines()) {
-            if(l.getVariables().size() > 1) {
-                return true;
-            }
+            if(l.getVariables().size() > 1) return true;
         }
         return false;
     }
@@ -33,38 +51,39 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
         try {
             MethodSource methodSource = new MethodSource();
 
-            GenerationProperties props = GenerationPropertiesFactory.loadProps();
-            String dpName = props.getDataProviderClassPattern();
-
-            String regularExp = getClassShort(dpName) + "[0-9]*\\.[A-Za-z0-9_]*\\(\\)";
-
-            Pattern p = Pattern.compile(regularExp);
+            String providerExp = "get[A-Za-z0-9_]+_[0-9_]+\\(\\)";
+            Pattern p = Pattern.compile(providerExp);
 
             String body = getBody();
 
-            int startIndex = body.indexOf("{");
-            int lastExpEndIndex = body.lastIndexOf(";");
+            int startIndex = body.indexOf("{") + 2;
+            int lastExpEndIndex = body.lastIndexOf(";") + 2;
 
-            String methodDefinition = body.substring(0, startIndex + 1);
-            String methodEnd = body.substring(lastExpEndIndex + 1);
+            String methodDefinition = body.substring(0, startIndex);
+            String methodEnd = body.substring(lastExpEndIndex);
 
             methodSource.setClassName(getClassName());
             methodSource.setUnitName(getUnitName());
             methodSource.setTestMethodDefinition(methodDefinition);
             methodSource.setTestMethodEnd(methodEnd);
 
-            String content = body.substring(startIndex + 1, lastExpEndIndex + 1);
+            String content = body.substring(startIndex, lastExpEndIndex);
 
-            String[] expressionArray = content.split(";");
+            String[] expressionArray = content.split(";\n");
 
             for (String line : expressionArray) {
-                String expLine = line + ";";
+                String expLine = line + ";\n";
                 Matcher m = p.matcher(line);
                 MethodLine methodLine = new MethodLine();
                 int i = 1;
                 while (m.find()) {
                     String text = m.group(0);
-                    methodLine.getVariables().add(new Variable(i, text));
+                    if (line.replace(" ", "").indexOf("=") > 0) {
+                        String type = line.trim().split(" ")[0].replace(" ", "");
+                        methodLine.getVariables().add(new Variable(i, text, type));
+                    } else {
+                        methodLine.getVariables().add(new Variable(i, text));
+                    }
                     expLine = expLine.replace(text, PLACE_HOLDER.replace("?", String.valueOf(i)));
                     i++;
                 }

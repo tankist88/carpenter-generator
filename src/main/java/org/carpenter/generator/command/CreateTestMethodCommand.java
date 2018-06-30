@@ -24,11 +24,17 @@ import java.util.*;
 import static java.util.Collections.singletonList;
 import static org.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static org.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
+import static org.carpenter.generator.util.TypeHelper.createImportInfo;
 import static org.carpenter.generator.util.TypeHelper.typeOfGenArg;
 import static org.object2source.util.GenerationUtil.*;
 
 public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<ClassExtInfo> {
     private static final int DATA_PROVIDER_MAX_LENGTH_IN_METHODS = 30;
+
+    static final String TEST_ANNOTATION = "@Test";
+
+    public static final String HASH_CODE_SEPARATOR = "_";
+    public static final String TEST_METHOD_PREFIX = "test";
 
     private StringBuilder builder;
 
@@ -75,8 +81,8 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
     private void createTestMethod() {
         String testMethodName = (
-                "test" + upFirst(callInfo.getUnitName()) +
-                "_" + callInfo.getArguments().hashCode()
+                TEST_METHOD_PREFIX + upFirst(callInfo.getUnitName()) +
+                HASH_CODE_SEPARATOR + callInfo.getArguments().hashCode() + "()"
                 ).replaceAll("-", "_");
 
         FieldProperties testProp = new FieldProperties(callInfo.getClassName(), TEST_INST_VAR_NAME);
@@ -90,9 +96,9 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         Set<FieldProperties> testClassHierarchy = new HashSet<>();
         testClassHierarchy.add(testProp);
 
-        builder.append(TAB + "@Test\n")
+        builder.append(TAB + TEST_ANNOTATION + "\n")
                .append(TAB + "public void ")
-               .append(testMethodName).append("()")
+               .append(testMethodName)
                .append(" throws java.lang.Exception {\n");
 
         Set<PreparedMock> mocks = createMocks(callInfo, serviceClasses, testClassHierarchy);
@@ -105,7 +111,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         appendMethodCallVerification(mocks);
         appendResultCheckAssert(callInfo);
 
-        builder.append(TAB + "}\n");
+        builder.append(TAB + "}");
 
         methods = singletonList(new MethodExtInfo(callInfo.getClassName(), testMethodName, builder.toString()));
     }
@@ -124,10 +130,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private void appendResultCheckAssert(MethodCallInfo callInfo) {
         AssertExtension assertExtension = findAssertExtension(callInfo);
         if (assertExtension != null) {
-            StringBuilder dataProviderBuilder = new StringBuilder();
-            appendDataProvider(dataProviderBuilder, callInfo.getReturnArg());
-            String dataProviderMethod = dataProviderBuilder.toString();
-            builder.append(assertExtension.getAssertBlock(dataProviderMethod));
+            builder.append(assertExtension.getAssertBlock(createDataProvider(callInfo.getReturnArg())));
         }
     }
 
@@ -138,6 +141,24 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     }
 
     private void appendTestCall(MethodCallInfo callInfo) {
+        int i = 0;
+        StringBuilder argBuilder = new StringBuilder();
+        StringBuilder providerBuilder = new StringBuilder();
+        Iterator<GeneratedArgument> iterator = callInfo.getArguments().iterator();
+        while (iterator.hasNext()) {
+            GeneratedArgument generatedArgument = iterator.next();
+            String argName = "_arg" + i;
+            providerBuilder
+                    .append(TAB + TAB)
+                    .append(generatedArgument.getNearestInstantAbleClass())
+                    .append(" ").append(argName).append(" = ")
+                    .append(createDataProvider(generatedArgument))
+                    .append(";\n");
+            argBuilder.append(argName);
+            if(iterator.hasNext()) argBuilder.append(", ");
+            i++;
+        }
+        builder.append(providerBuilder.toString());
         builder.append(TAB + TAB);
         if (findAssertExtension(callInfo) != null) {
             builder.append(typeOfGenArg(callInfo.getReturnArg())).append(" result = ");
@@ -147,13 +168,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         } else {
             builder.append(TEST_INST_VAR_NAME + ".");
         }
-        builder.append(callInfo.getUnitName()).append("(");
-        Iterator<GeneratedArgument> iterator = callInfo.getArguments().iterator();
-        while (iterator.hasNext()) {
-            appendDataProvider(builder, iterator.next());
-            if(iterator.hasNext()) builder.append(", ");
-        }
-        builder.append(");\n");
+        builder.append(callInfo.getUnitName()).append("(").append(argBuilder.toString()).append(");\n");
     }
 
     private Set<PreparedMock> createMocks(MethodCallInfo callInfo, Set<FieldProperties> serviceClasses, Set<FieldProperties> testClassHierarchy) {
@@ -191,7 +206,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 .append(TAB + TAB + TAB + "private int count = 0;\n")
                 .append(TAB + TAB + TAB + "private ");
         if(!isPrimitive(innerFirst.getReturnArg().getClassName())) {
-            imports.add(TypeHelper.createImportInfo(innerFirst.getReturnArg().getClassName(), callInfo.getClassName()));
+            imports.add(createImportInfo(innerFirst.getReturnArg().getClassName(), callInfo.getClassName()));
         }
         mockBuilder.append(getClassShort(innerFirst.getReturnArg().getClassName())).append("[] values = {\n");
         List<MethodCallInfo> methodCallInfoList = new ArrayList<>(innerSet);
@@ -204,8 +219,8 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         Iterator<MethodCallInfo> methodCallInfoIterator = methodCallInfoList.iterator();
         while(methodCallInfoIterator.hasNext()) {
             MethodCallInfo m = methodCallInfoIterator.next();
-            mockBuilder.append(TAB + TAB + TAB + TAB + TAB);
-            appendDataProvider(mockBuilder, m.getReturnArg());
+            mockBuilder.append(TAB + TAB + TAB + TAB + TAB)
+                       .append(createDataProvider(m.getReturnArg()));
             if(methodCallInfoIterator.hasNext()) mockBuilder.append(",");
             mockBuilder.append("\n");
         }
@@ -252,16 +267,9 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             if (voidMethod) {
                 mockBuilder.append(TAB + TAB + "doNothing().when(");
             } else {
-                ProviderResult providerResult = inner.getReturnArg().getGenerated();
-                if (providerResult != null) {
-                    MethodBaseInfo mn = getProviderNameAndUpdateState(providerResult);
-                    mockBuilder.append(TAB + TAB + "doReturn(").append(getClassShort(mn.getClassName())).append(".").append(mn.getUnitName()).append(").when(");
-                    if(!isPrimitive(mn.getClassName())) {
-                        imports.add(TypeHelper.createImportInfo(mn.getClassName(), callInfo.getClassName()));
-                    }
-                } else {
-                    mockBuilder.append(TAB + TAB + "doReturn(").append("null").append(").when(");
-                }
+                mockBuilder.append(TAB + TAB + "doReturn(")
+                           .append(createDataProvider(inner.getReturnArg()))
+                           .append(").when(");
             }
             mockBuilder.append(varName).append(").").append(inner.getUnitName());
             verifyBuilder.append(varName).append(", atLeastOnce()).").append(inner.getUnitName());
@@ -282,24 +290,24 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             if (arg.getGenerated() != null && arg.getGenericString() != null && arg.getInterfacesHierarchy().contains("java.util.List")) {
                 sb.append("ArgumentMatchers.<").append(getLastClassShort(arg.getGenericString())).append(">anyList()");
                 if(!isPrimitive(arg.getGenericString())) {
-                    imports.add(TypeHelper.createImportInfo(arg.getGenericString(), callInfo.getClassName()));
+                    imports.add(createImportInfo(arg.getGenericString(), callInfo.getClassName()));
                 }
             } else if (arg.getGenerated() != null && arg.getGenericString() != null && arg.getInterfacesHierarchy().contains("java.util.Set")) {
                 sb.append("ArgumentMatchers.<").append(getLastClassShort(arg.getGenericString())).append(">anySet()");
                 if(!isPrimitive(arg.getGenericString())) {
-                    imports.add(TypeHelper.createImportInfo(arg.getGenericString(), callInfo.getClassName()));
+                    imports.add(createImportInfo(arg.getGenericString(), callInfo.getClassName()));
                 }
             } else if (arg.getGenerated() != null) {
                 String clearedType = getClearedClassName(arg.getClassName());
                 sb.append("any(").append(getLastClassShort(clearedType)).append(".class").append(")");
                 if(!isPrimitive(clearedType)) {
-                    imports.add(TypeHelper.createImportInfo(clearedType, callInfo.getClassName()));
+                    imports.add(createImportInfo(clearedType, callInfo.getClassName()));
                 }
             } else {
                 String clearedType = getClearedClassName(arg.getClassName());
                 sb.append("nullable(").append(getLastClassShort(clearedType)).append(".class").append(")");
                 if(!isPrimitive(clearedType)) {
-                    imports.add(TypeHelper.createImportInfo(clearedType, callInfo.getClassName()));
+                    imports.add(createImportInfo(clearedType, callInfo.getClassName()));
                 }
             }
             if (iterator.hasNext()) sb.append(", ");
@@ -307,18 +315,21 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         sb.append(")");
     }
 
-    private void appendDataProvider(StringBuilder sb, GeneratedArgument arg) {
+    private String createDataProvider(GeneratedArgument arg) {
+        String result;
         ProviderResult providerResult = arg.getGenerated();
         if (providerResult != null) {
-            MethodBaseInfo mn = getProviderNameAndUpdateState(providerResult);
-            sb.append(getClassShort(mn.getClassName())).append(".").append(mn.getUnitName());
-            if(!isPrimitive(mn.getClassName())) {
-                imports.add(TypeHelper.createImportInfo(mn.getClassName(), callInfo.getClassName()));
+            MethodBaseInfo dp = getProviderNameAndUpdateState(providerResult);
+            result = dp.getUnitName();
+            if(!isPrimitive(dp.getClassName())) {
+                String importClass = dp.getClassName()+ "."+ (dp.getUnitName()).replace("()", "");
+                imports.add(createImportInfo(importClass, callInfo.getClassName(), true));
             }
         } else {
-            sb.append("(").append(getLastClassShort(arg.getNearestInstantAbleClass())).append(") null");
-            imports.add(TypeHelper.createImportInfo(arg.getNearestInstantAbleClass(), callInfo.getClassName()));
+            result = "(" + getLastClassShort(arg.getNearestInstantAbleClass()) + ") null";
+            imports.add(createImportInfo(arg.getNearestInstantAbleClass(), callInfo.getClassName()));
         }
+        return result;
     }
 
     private SeparatedInners separateInners(Set<MethodCallInfo> inners) {
@@ -328,9 +339,9 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             Set<MethodCallInfo> innerSet = new HashSet<>();
             for(MethodCallInfo current : inners) {
                 if( inner.getClassName().equals(current.getClassName())
-                        && inner.getUnitName().equals(current.getUnitName())
-                        && inner.getMethodModifiers() == current.getMethodModifiers()
-                        && inner.getArguments().size() == current.getArguments().size())
+                    && inner.getUnitName().equals(current.getUnitName())
+                    && inner.getMethodModifiers() == current.getMethodModifiers()
+                    && inner.getArguments().size() == current.getArguments().size())
                 {
                     innerSet.add(current);
                 }
@@ -346,8 +357,18 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                         break;
                     }
                 }
+                boolean allReturnEquals = true;
+                ProviderResult prevProvider = set.iterator().next().getReturnArg().getGenerated();
+                for(MethodCallInfo m : set) {
+                    if(!m.getReturnArg().getGenerated().equals(prevProvider)) {
+                        allReturnEquals = false;
+                        break;
+                    } else {
+                        prevProvider = m.getReturnArg().getGenerated();
+                    }
+                }
                 MethodCallInfo mc = set.iterator().next();
-                if(mc.isVoidMethod() || allReturnNulls) {
+                if(mc.isVoidMethod() || allReturnNulls || allReturnEquals) {
                     result.getSingleInners().add(mc);
                 } else {
                     result.getMultipleInners().add(set);

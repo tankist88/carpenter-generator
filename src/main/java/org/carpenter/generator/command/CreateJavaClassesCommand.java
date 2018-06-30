@@ -22,6 +22,7 @@ import static org.apache.commons.io.FileUtils.forceMkdir;
 import static org.apache.commons.io.FileUtils.write;
 import static org.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static org.carpenter.generator.TestGenerator.GENERATED_TEST_CLASS_POSTFIX;
+import static org.carpenter.generator.command.CreateTestMethodCommand.TEST_ANNOTATION;
 import static org.carpenter.generator.util.GenerateUtil.createAndReturnPathName;
 import static org.object2source.util.GenerationUtil.*;
 
@@ -115,14 +116,18 @@ public class CreateJavaClassesCommand extends AbstractCommand {
         return methods;
     }
 
-    private Set<MethodExtInfo> groupMethods(Set<MethodExtInfo> allMethods) {
-        Set<MethodSource> commonMethods = new HashSet<>();
+    private Set<MethodSource> createCommonMethods(Set<MethodExtInfo> allMethods) {
+        Set<MethodExtInfo> duplicateMethods = new HashSet<>();
+        Set<MethodSource> checkMethodSet = new HashSet<>();
         for (MethodExtInfo extInfo : allMethods) {
+            if (!checkMethodSet.add(extInfo.createMethodSource())) {
+                duplicateMethods.add(extInfo);
+            }
+        }
+        Set<MethodSource> commonMethods = new HashSet<>();
+        for (MethodExtInfo extInfo : duplicateMethods) {
             if (extInfo.hasMultipleMock()) continue;
-            String commonName = "test" + upFirst(extInfo.getUnitName());
             MethodSource methodSource = extInfo.createMethodSource();
-            String definition = methodSource.getTestMethodDefinition();
-            definition = definition.replace(extInfo.getUnitName(), commonName);
 
             StringBuilder argDefBuilder = new StringBuilder();
             argDefBuilder.append("(");
@@ -131,16 +136,26 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                 for (Variable var : line.getVariables()) {
                     String argDef = "arg" + i;
                     var.setValue(argDef);
-                    argDefBuilder.append(argDef).append(", ");
+                    argDefBuilder.append(var.getType()).append(" ").append(argDef).append(", ");
                     i++;
                 }
             }
-            argDefBuilder.delete(argDefBuilder.length() - 1, argDefBuilder.length() - 1);
+            if (i == 0) continue;
+            argDefBuilder.delete(argDefBuilder.length() - 2, argDefBuilder.length());
             argDefBuilder.append(")");
-            definition = definition.replace("()", argDefBuilder.toString());
+
+            methodSource.setUnitName(extInfo.createCommonMethodName() + argDefBuilder.toString());
+            String definition = methodSource.getTestMethodDefinition();
+            definition = definition.replace(extInfo.getUnitName(), methodSource.getUnitName());
+            definition = definition.substring(definition.indexOf(TEST_ANNOTATION + "\n") + 6);
             methodSource.setTestMethodDefinition(definition);
             commonMethods.add(methodSource);
         }
+        return commonMethods;
+    }
+
+    private Set<MethodExtInfo> groupMethods(Set<MethodExtInfo> allMethods) {
+        Set<MethodSource> commonMethods = createCommonMethods(allMethods);
         for (MethodExtInfo extInfo : allMethods) {
             MethodSource methodSource = extInfo.createMethodSource();
             if (commonMethods.contains(methodSource)) {
@@ -151,13 +166,10 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                         argBuilder.append(var.getValue()).append(", ");
                     }
                 }
-                argBuilder.delete(argBuilder.length() - 1, argBuilder.length() - 1);
-                argBuilder.append(")");
-                String commonName = "test" + upFirst(extInfo.getUnitName());
-                String newContent = TAB + TAB + commonName + argBuilder.toString() + ";\n";
-                MethodLine newLine = new MethodLine(newContent);
+                argBuilder.delete(argBuilder.length() - 2, argBuilder.length()).append(")");
+                String newContent = TAB + TAB + extInfo.createCommonMethodName() + argBuilder.toString() + ";\n";
                 methodSource.getLines().clear();
-                methodSource.getLines().add(newLine);
+                methodSource.getLines().add(new MethodLine(newContent));
                 extInfo.setBody(methodSource.toString());
             }
         }

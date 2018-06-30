@@ -5,6 +5,7 @@ import org.carpenter.core.property.GenerationProperties;
 import org.carpenter.core.property.GenerationPropertiesFactory;
 import org.carpenter.generator.command.*;
 import org.carpenter.generator.dto.unit.ClassExtInfo;
+import org.carpenter.generator.dto.unit.method.MethodExtInfo;
 import org.carpenter.generator.enums.TestFieldCategory;
 import org.carpenter.generator.extension.assertext.AssertExtension;
 import org.carpenter.generator.extension.assertext.CalendarAssertExtension;
@@ -12,6 +13,8 @@ import org.carpenter.generator.extension.assertext.DateAssertExtension;
 import org.carpenter.generator.extension.assertext.SimpleAssertExtension;
 
 import java.util.*;
+
+import static org.carpenter.generator.command.CreateTestMethodCommand.TEST_METHOD_PREFIX;
 
 public class TestBuilder {
     private Map<String, Set<ClassExtInfo>> classInfoMap;
@@ -98,12 +101,22 @@ public class TestBuilder {
     }
 
     @SuppressWarnings("unchecked")
-    public void build() {
+    public int build() {
         for(ReturnCommand<ClassExtInfo> command : commands) {
             command.execute();
             addClassInfo(command.returnResult());
         }
         Command saveCommand = new CreateJavaClassesCommand(classInfoMap);
         saveCommand.execute();
+        int generatedTests = 0;
+        for (Set<ClassExtInfo> extInfos : classInfoMap.values()) {
+            for (ClassExtInfo extInfo : extInfos) {
+                if (extInfo instanceof MethodExtInfo &&
+                    extInfo.getUnitName().startsWith(TEST_METHOD_PREFIX)) {
+                    generatedTests++;
+                }
+            }
+        }
+        return generatedTests;
     }
 }
