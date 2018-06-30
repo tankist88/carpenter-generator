@@ -76,8 +76,8 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private void createTestMethod() {
         String testMethodName = (
                 "test" + upFirst(callInfo.getUnitName()) +
-                "_" + callInfo.getArguments().hashCode() +
-                "()").replaceAll("-", "_");
+                "_" + callInfo.getArguments().hashCode()
+                ).replaceAll("-", "_");
 
         FieldProperties testProp = new FieldProperties(callInfo.getClassName(), TEST_INST_VAR_NAME);
         testProp.setClassHierarchy(callInfo.getClassHierarchy());
@@ -92,7 +92,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
         builder.append(TAB + "@Test\n")
                .append(TAB + "public void ")
-               .append(testMethodName)
+               .append(testMethodName).append("()")
                .append(" throws java.lang.Exception {\n");
 
         Set<PreparedMock> mocks = createMocks(callInfo, serviceClasses, testClassHierarchy);

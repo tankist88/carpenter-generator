@@ -1,0 +1,23 @@
+    @Test
+    public void testGetSortedTermConditions__2080488256() throws java.lang.Exception {
+        doAnswer(new Answer() {
+            private int count = 0;
+            private Calendar[] values = {
+                    CDP_1.getGregorianCalendar__1443502348(),
+                    CDP_1.getGregorianCalendar__1443502348(),
+                    CDP_1.getGregorianCalendar__1443502348(),
+                    CDP_1.getGregorianCalendar_1259674081(),
+                    CDP_1.getGregorianCalendar__1248850654(),
+                    CDP_1.getGregorianCalendar__605438459(),
+                    CDP_1.getGregorianCalendar__605438459()
+            };
+            @Override
+            public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
+                Calendar result = values[count];
+                if(count + 1 < values.length) count++;
+                return result;
+            }
+        }).when(testInstance).calcCloseDate(any(TermCondition.class), any(Boolean.class));
+        testInstance.getSortedTermConditions(CDP_5.getArrayList__981943460());
+        verify(testInstance, atLeastOnce()).calcCloseDate(any(TermCondition.class), any(Boolean.class));
+    }

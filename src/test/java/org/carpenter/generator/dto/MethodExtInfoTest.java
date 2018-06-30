@@ -1,9 +1,14 @@
 package org.carpenter.generator.dto;
 
+import org.carpenter.generator.dto.source.MethodSource;
 import org.carpenter.generator.dto.unit.ClassExtInfo;
 import org.carpenter.generator.dto.unit.method.MethodExtInfo;
 import org.testng.annotations.Test;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -54,5 +59,29 @@ public class MethodExtInfoTest {
 
         assertEquals(initMockMethod2.hashCode(), initMockMethod1.hashCode());
         assertEquals(set.size(), 1);
+    }
+
+    @Test
+    public void testCreateMethodSource() throws Exception {
+        InputStream is = this.getClass().getClassLoader().getResourceAsStream("method.txt");
+
+        StringBuilder bodyBuilder = new StringBuilder();
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+        String line;
+        while ((line = br.readLine()) != null) {
+            bodyBuilder.append(line).append("\n");
+        }
+        String body = bodyBuilder.toString();
+
+        MethodExtInfo methodExtInfo = new MethodExtInfo();
+        methodExtInfo.setClassName("Test");
+        methodExtInfo.setUnitName("testGetSortedTermConditions__2080488256");
+        methodExtInfo.setBody(body);
+
+        MethodSource methodSource = methodExtInfo.createMethodSource();
+
+        System.out.println(methodSource.toString());
+
+        assertEquals(methodSource.toString(), body);
     }
 }
