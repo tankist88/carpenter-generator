@@ -1,5 +1,6 @@
 package org.carpenter.generator.command;
 
+import org.carpenter.core.dto.unit.method.MethodBaseInfo;
 import org.carpenter.core.property.GenerationProperties;
 import org.carpenter.core.property.GenerationPropertiesFactory;
 import org.carpenter.generator.UnitClassifier;
@@ -13,10 +14,7 @@ import org.carpenter.generator.dto.unit.method.MethodExtInfo;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.apache.commons.io.FileUtils.forceMkdir;
 import static org.apache.commons.io.FileUtils.write;
@@ -62,15 +60,14 @@ public class CreateJavaClassesCommand extends AbstractCommand {
             classBuilder.append("package ").append(packageName).append(";\n\n");
 
             if(!fullClassName.startsWith(dataProviderClassPattern)) {
-                classBuilder.append("import org.testng.annotations.Test;\n");
-                classBuilder.append("import org.testng.annotations.BeforeMethod;\n\n");
+                classBuilder.append("import org.testng.annotations.*;\n\n");
                 classBuilder.append("import org.mockito.ArgumentMatchers;\n");
                 classBuilder.append("import org.mockito.InjectMocks;\n");
                 classBuilder.append("import org.mockito.invocation.InvocationOnMock;\n");
                 classBuilder.append("import org.mockito.stubbing.Answer;\n");
                 classBuilder.append("import org.mockito.Spy;\n");
                 classBuilder.append("import org.mockito.Mock;\n\n");
-                classBuilder.append("import static org.testng.Assert.assertEquals;\n\n");
+                classBuilder.append("import static org.testng.Assert.*;\n\n");
                 classBuilder.append("import static org.mockito.ArgumentMatchers.*;\n");
                 classBuilder.append("import static org.mockito.Mockito.*;\n");
                 classBuilder.append("import static org.mockito.MockitoAnnotations.initMocks;\n\n");
@@ -95,7 +92,7 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                     classBuilder.append(unit.getBody()).append("\n");
                 }
             }
-            for(MethodExtInfo unit : groupMethods(extractMethods(groupList))) {
+            for(MethodExtInfo unit : createDataProviders(extractMethods(groupList))) {
                 classBuilder.append(unit.getBody()).append("\n");
             }
 
@@ -136,12 +133,10 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                 for (Variable var : line.getVariables()) {
                     String argDef = "arg" + i;
                     var.setValue(argDef);
-                    argDefBuilder
-                            .append("final ")
-                            .append(var.getType())
-                            .append(" ")
-                            .append(argDef)
-                            .append(", ");
+                    if (var.isArray()) {
+                        argDefBuilder.append("final ");
+                    }
+                    argDefBuilder.append(var.getType()).append(" ").append(argDef).append(", ");
                     i++;
                 }
             }
@@ -152,35 +147,61 @@ public class CreateJavaClassesCommand extends AbstractCommand {
             methodSource.setUnitName(extInfo.createCommonMethodName() + argDefBuilder.toString());
             String definition = methodSource.getTestMethodDefinition();
             definition = definition.replace(extInfo.getUnitName(), methodSource.getUnitName());
-            definition = definition.substring(definition.indexOf(TEST_ANNOTATION + "\n") + 6);
+            String providerName = extInfo.createCommonMethodName() + "Provider";
+            definition = definition.replace(TEST_ANNOTATION, TEST_ANNOTATION + "(dataProvider = \"" + providerName + "\")");
             methodSource.setTestMethodDefinition(definition);
             commonMethods.add(methodSource);
         }
         return commonMethods;
     }
 
-    private Set<MethodExtInfo> groupMethods(Set<MethodExtInfo> allMethods) {
+    private Set<MethodExtInfo> createDataProviders(Set<MethodExtInfo> allMethods) {
         Set<MethodSource> commonMethods = createCommonMethods(allMethods);
+        Set<MethodExtInfo> result = new HashSet<>();
+
+        Map<MethodBaseInfo, Set<MethodExtInfo>> groupingMap = new HashMap<>();
         for (MethodExtInfo extInfo : allMethods) {
-            MethodSource methodSource = extInfo.createMethodSource();
-            if (commonMethods.contains(methodSource)) {
-                StringBuilder argBuilder = new StringBuilder();
-                argBuilder.append("(");
-                for (MethodLine line : methodSource.getLines()) {
-                    for (Variable var : line.getVariables()) {
-                        argBuilder.append(var.getValue()).append(", ");
-                    }
+            if (commonMethods.contains(extInfo.createMethodSource())) {
+                MethodBaseInfo key = new MethodBaseInfo(extInfo.getClassName(), extInfo.createCommonMethodName());
+                Set<MethodExtInfo> methodGroup = groupingMap.get(key);
+                if (methodGroup == null) {
+                    methodGroup = new HashSet<>();
+                    groupingMap.put(key, methodGroup);
                 }
-                argBuilder.delete(argBuilder.length() - 2, argBuilder.length()).append(")");
-                String newContent = TAB + TAB + extInfo.createCommonMethodName() + argBuilder.toString() + ";\n";
-                methodSource.getLines().clear();
-                methodSource.getLines().add(new MethodLine(newContent));
-                extInfo.setBody(methodSource.toString());
+                methodGroup.add(extInfo);
+            } else {
+                result.add(extInfo);
             }
         }
-        for (MethodSource methodSource : commonMethods) {
-            allMethods.add(methodSource.createMethodExtInfo());
+
+        for (Map.Entry<MethodBaseInfo, Set<MethodExtInfo>> entry : groupingMap.entrySet()) {
+            StringBuilder dataProviderBuilder = new StringBuilder();
+            String methodName = entry.getKey().getUnitName() + "Provider()";
+            dataProviderBuilder
+                    .append(TAB + "@DataProvider\n")
+                    .append(TAB + "public Object[][] ")
+                    .append(methodName).append(" throws Exception {\n")
+                    .append(TAB + TAB + "return new Object[][] {\n");
+            Iterator<MethodExtInfo> iterator = entry.getValue().iterator();
+            while (iterator.hasNext()) {
+                MethodExtInfo extInfo = iterator.next();
+                MethodSource methodSource = extInfo.createMethodSource();
+                dataProviderBuilder.append(TAB + TAB + TAB + "{");
+                for (MethodLine line : methodSource.getLines()) {
+                    for (Variable var : line.getVariables()) {
+                        dataProviderBuilder.append(var.getValue()).append(", ");
+                    }
+                }
+                dataProviderBuilder.delete(dataProviderBuilder.length() - 2, dataProviderBuilder.length()).append("}");
+                if (iterator.hasNext()) dataProviderBuilder.append(", ");
+                dataProviderBuilder.append("\n");
+            }
+            dataProviderBuilder.append(TAB + TAB + "};\n").append(TAB + "}\n");
+            result.add(new MethodExtInfo(entry.getKey().getClassName(), methodName, dataProviderBuilder.toString()));
         }
-        return allMethods;
+        for (MethodSource methodSource : commonMethods) {
+            result.add(methodSource.createMethodExtInfo());
+        }
+        return result;
     }
 }

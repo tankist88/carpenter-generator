@@ -413,6 +413,9 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     }
 
     private MethodBaseInfo getProviderNameAndUpdateState(ProviderResult providerResult) {
+        if (providerResult.getEndPoint().getMethodName().contains("getExtPlan__1255978215")) {
+            int a = 2;
+        }
         String existsClassName = getExistsProviderClassName(providerResult.getEndPoint().getMethodName());
         if(existsClassName != null) {
             return new MethodBaseInfo(existsClassName, providerResult.getEndPoint().getMethodName());
@@ -454,14 +457,21 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
     private String getExistsProviderClassName(String currentMethodName) {
         String methodClass = null;
-        for(Map.Entry<String, Set<String>> entry : this.providerSignatureMap.entrySet()) {
-            for(String method : entry.getValue()) {
-                if(method.equals(currentMethodName)) {
+        List<Map.Entry<String, Set<String>>> entryList = new ArrayList<>(providerSignatureMap.entrySet());
+        Collections.sort(entryList, new Comparator<Map.Entry<String, Set<String>>>() {
+            @Override
+            public int compare(Map.Entry<String, Set<String>> o1, Map.Entry<String, Set<String>> o2) {
+                return o1.getKey().compareTo(o2.getKey());
+            }
+        });
+        for (Map.Entry<String, Set<String>> entry : entryList) {
+            for (String method : entry.getValue()) {
+                if (method.equals(currentMethodName)) {
                     methodClass = entry.getKey();
                     break;
                 }
             }
-            if(methodClass != null) break;
+            if (methodClass != null) break;
         }
         return methodClass;
     }

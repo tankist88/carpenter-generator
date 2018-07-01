@@ -41,6 +41,10 @@ public class Variable {
         this.type = type;
     }
 
+    public boolean isArray() {
+        return type != null && type.contains("[]");
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
