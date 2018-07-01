@@ -5,15 +5,22 @@ import org.carpenter.generator.dto.source.MethodSource;
 import org.carpenter.generator.dto.source.Variable;
 import org.carpenter.generator.dto.unit.AbstractUnitExtInfo;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.carpenter.generator.command.CreateTestMethodCommand.HASH_CODE_SEPARATOR;
+import static org.carpenter.generator.command.CreateTestMethodCommand.TEST_ANNOTATION;
 import static org.carpenter.generator.command.CreateTestMethodCommand.TEST_METHOD_PREFIX;
 import static org.carpenter.generator.dto.source.MethodLine.PLACE_HOLDER;
 import static org.object2source.util.GenerationUtil.upFirst;
 
 public class MethodExtInfo extends AbstractUnitExtInfo {
+    private static final List<String> JAVA_MODIFIERS = Arrays.asList(
+        "private", "public", "protected", "static", "final", "volatile", "transient"
+    );
+
     public MethodExtInfo() {
     }
     public MethodExtInfo(String className, String unitName, String body) {
@@ -21,11 +28,15 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
     }
 
     public String createCommonMethodName() {
-        if(getUnitName().startsWith(TEST_METHOD_PREFIX)) {
+        if (getUnitName().startsWith(TEST_METHOD_PREFIX)) {
             return getUnitName().substring(0, getUnitName().indexOf(HASH_CODE_SEPARATOR));
         } else {
             return "common" + upFirst(getUnitName());
         }
+    }
+
+    public boolean isTestMethod() {
+        return getUnitName().startsWith(TEST_METHOD_PREFIX) && getBody().contains(TEST_ANNOTATION);
     }
 
     private static String validateUnitName(String unitName) {
@@ -38,13 +49,6 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
     @Override
     public void setUnitName(String unitName) {
         super.setUnitName(validateUnitName(unitName));
-    }
-
-    public boolean hasMultipleMock() {
-        for (MethodLine l : createMethodSource().getLines()) {
-            if(l.getVariables().size() > 1) return true;
-        }
-        return false;
     }
 
     public MethodSource createMethodSource() {
@@ -79,7 +83,14 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
                 while (m.find()) {
                     String text = m.group(0);
                     if (line.replace(" ", "").indexOf("=") > 0) {
-                        String type = line.trim().split(" ")[0].replace(" ", "");
+                        String typeStr = Object.class.getName();
+                        for (String e : line.trim().split(" ")) {
+                            if (!JAVA_MODIFIERS.contains(e.trim())) {
+                                typeStr = e;
+                                break;
+                            }
+                        }
+                        String type = typeStr.replace(" ", "");
                         methodLine.getVariables().add(new Variable(i, text, type));
                     } else {
                         methodLine.getVariables().add(new Variable(i, text));

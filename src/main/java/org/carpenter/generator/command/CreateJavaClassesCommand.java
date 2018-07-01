@@ -126,7 +126,7 @@ public class CreateJavaClassesCommand extends AbstractCommand {
         }
         Set<MethodSource> commonMethods = new HashSet<>();
         for (MethodExtInfo extInfo : duplicateMethods) {
-            if (extInfo.hasMultipleMock()) continue;
+            if (!extInfo.isTestMethod()) continue;
             MethodSource methodSource = extInfo.createMethodSource();
 
             StringBuilder argDefBuilder = new StringBuilder();
@@ -136,7 +136,12 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                 for (Variable var : line.getVariables()) {
                     String argDef = "arg" + i;
                     var.setValue(argDef);
-                    argDefBuilder.append(var.getType()).append(" ").append(argDef).append(", ");
+                    argDefBuilder
+                            .append("final ")
+                            .append(var.getType())
+                            .append(" ")
+                            .append(argDef)
+                            .append(", ");
                     i++;
                 }
             }

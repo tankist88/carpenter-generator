@@ -32,8 +32,7 @@ public class TestGenerator {
         boolean deniedDeclarationPlace = !callInfo.getClassName().equals(callInfo.getDeclaringTypeName());
         boolean deniedClassType = callInfo.isMemberClass() && !Modifier.isStatic(callInfo.getClassModifiers());
         boolean anonymousClass = getLastClassShort(callInfo.getClassName()).matches("\\d+");
-//        boolean hasNotZeroArgConstructor = !callInfo.isClassHasZeroArgConstructor();
-        return !allowedPackage(callInfo.getClassName(), props) || deniedModifier || deniedClassType || deniedDeclarationPlace || anonymousClass;// || hasNotZeroArgConstructor;
+        return !allowedPackage(callInfo.getClassName(), props) || deniedModifier || deniedClassType || deniedDeclarationPlace || anonymousClass;
     }
 
     private int generate() {

@@ -31,8 +31,7 @@ import static org.object2source.util.GenerationUtil.*;
 public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<ClassExtInfo> {
     private static final int DATA_PROVIDER_MAX_LENGTH_IN_METHODS = 30;
 
-    static final String TEST_ANNOTATION = "@Test";
-
+    public static final String TEST_ANNOTATION = "@Test";
     public static final String HASH_CODE_SEPARATOR = "_";
     public static final String TEST_METHOD_PREFIX = "test";
 
@@ -48,6 +47,8 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private Map<String, Set<ClassExtInfo>> dataProviders;
     private Set<ImportInfo> imports;
 
+    private Set<MethodExtInfo> arrayProviders;
+
     public CreateTestMethodCommand(MethodCallInfo callInfo, Map<String, Set<String>> providerSignatureMap, Map<String, Set<ClassExtInfo>> dataProviders, List<AssertExtension> assertExtensions) {
         this.callInfo = callInfo;
         this.providerSignatureMap = providerSignatureMap;
@@ -60,6 +61,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         } else {
             this.assertExtensions = new ArrayList<>();
         }
+        this.arrayProviders = new HashSet<>();
     }
 
     @Override
@@ -72,6 +74,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     public List<ClassExtInfo> returnResult() {
         List<ClassExtInfo> result = new ArrayList<>();
         result.addAll(methods);
+        result.addAll(arrayProviders);
         result.addAll(imports);
         for(Set<ClassExtInfo> set : dataProviders.values()) {
             result.addAll(set);
@@ -97,16 +100,11 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         testClassHierarchy.add(testProp);
 
         builder.append(TAB + TEST_ANNOTATION + "\n")
-               .append(TAB + "public void ")
-               .append(testMethodName)
-               .append(" throws java.lang.Exception {\n");
+               .append(TAB + "public void ").append(testMethodName).append(" throws java.lang.Exception {\n");
 
         Set<PreparedMock> mocks = createMocks(callInfo, serviceClasses, testClassHierarchy);
 
-        for (PreparedMock mock : mocks) {
-            builder.append(mock.getMock());
-        }
-
+        appendMocks(mocks);
         appendTestCall(callInfo);
         appendMethodCallVerification(mocks);
         appendResultCheckAssert(callInfo);
@@ -131,6 +129,12 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         AssertExtension assertExtension = findAssertExtension(callInfo);
         if (assertExtension != null) {
             builder.append(assertExtension.getAssertBlock(createDataProvider(callInfo.getReturnArg())));
+        }
+    }
+
+    private void appendMocks(Set<PreparedMock> mocks) {
+        for (PreparedMock mock : mocks) {
+            builder.append(mock.getMock());
         }
     }
 
@@ -194,6 +198,47 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         return (staticMethod || (multiple && (privateMethod || protectedMethod)) || !TypeHelper.isSameTypes(callInfo, serviceClasses));
     }
 
+    private String createArrayProvider(Set<MethodCallInfo> innerSet) {
+        MethodCallInfo innerFirst = innerSet.iterator().next();
+        String retType = innerFirst.getReturnArg().getClassName();
+        StringBuilder providerBuilder = new StringBuilder();
+
+        List<GeneratedArgument> arguments = new ArrayList<>();
+        for (MethodCallInfo m : innerSet) {
+            arguments.add(m.getReturnArg());
+        }
+        String hashCodeStr = String.valueOf(Objects.hashCode(arguments)).replace("-", "_");
+
+        String unitName = "getArray" + getClassShort(retType) + "_" + hashCodeStr + "()";
+
+        providerBuilder
+                .append(TAB + "private ").append(getClassShort(retType)).append("[] ").append(unitName)
+                .append(" throws Exception {\n")
+                .append(TAB + TAB).append(getClassShort(retType)).append("[] values = {\n");
+
+        List<MethodCallInfo> methodCallInfoList = new ArrayList<>(innerSet);
+        Collections.sort(methodCallInfoList, new Comparator<MethodCallInfo>() {
+            @Override
+            public int compare(MethodCallInfo o1, MethodCallInfo o2) {
+                return (o1.getCallTime() > o2.getCallTime()) ? 1 : -1;
+            }
+        });
+        Iterator<MethodCallInfo> methodCallInfoIterator = methodCallInfoList.iterator();
+        while(methodCallInfoIterator.hasNext()) {
+            MethodCallInfo m = methodCallInfoIterator.next();
+            providerBuilder.append(TAB + TAB + TAB).append(createDataProvider(m.getReturnArg()));
+            if(methodCallInfoIterator.hasNext()) providerBuilder.append(",");
+            providerBuilder.append("\n");
+        }
+        providerBuilder
+                .append(TAB + TAB).append("};\n")
+                .append(TAB + TAB).append("return values;\n")
+                .append(TAB).append("}\n");
+
+        arrayProviders.add(new MethodExtInfo(callInfo.getClassName(), unitName, providerBuilder.toString()));
+        return unitName;
+    }
+
     private Set<PreparedMock> createMultipleMock(Set<MethodCallInfo> innerSet, Set<FieldProperties> serviceClasses, Set<FieldProperties> testClassHierarchy) {
         MethodCallInfo innerFirst = innerSet.iterator().next();
 
@@ -201,33 +246,20 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
         boolean sameTypeWithTest = TypeHelper.isSameTypes(innerFirst, testClassHierarchy);
         String varName = sameTypeWithTest ? TEST_INST_VAR_NAME : TypeHelper.determineVarName(innerFirst, serviceClasses);
+
+        String retType = innerFirst.getReturnArg().getClassName();
+        if(!isPrimitive(retType)) {
+            imports.add(createImportInfo(retType, callInfo.getClassName()));
+        }
+
         StringBuilder mockBuilder = new StringBuilder();
         mockBuilder.append(TAB + TAB + "doAnswer(new Answer() {\n")
                 .append(TAB + TAB + TAB + "private int count = 0;\n")
-                .append(TAB + TAB + TAB + "private ");
-        if(!isPrimitive(innerFirst.getReturnArg().getClassName())) {
-            imports.add(createImportInfo(innerFirst.getReturnArg().getClassName(), callInfo.getClassName()));
-        }
-        mockBuilder.append(getClassShort(innerFirst.getReturnArg().getClassName())).append("[] values = {\n");
-        List<MethodCallInfo> methodCallInfoList = new ArrayList<>(innerSet);
-        Collections.sort(methodCallInfoList, new Comparator<MethodCallInfo>() {
-            @Override
-            public int compare(MethodCallInfo o1, MethodCallInfo o2) {
-                return (o1.getCallTime() > o2.getCallTime()) ? -1 : 1;
-            }
-        });
-        Iterator<MethodCallInfo> methodCallInfoIterator = methodCallInfoList.iterator();
-        while(methodCallInfoIterator.hasNext()) {
-            MethodCallInfo m = methodCallInfoIterator.next();
-            mockBuilder.append(TAB + TAB + TAB + TAB + TAB)
-                       .append(createDataProvider(m.getReturnArg()));
-            if(methodCallInfoIterator.hasNext()) mockBuilder.append(",");
-            mockBuilder.append("\n");
-        }
-        mockBuilder.append(TAB + TAB + TAB + "};\n")
+                .append(TAB + TAB + TAB + "private ")
+                .append(getClassShort(retType)).append("[] values = ").append(createArrayProvider(innerSet)).append(";\n")
                 .append(TAB + TAB + TAB + "@Override\n")
                 .append(TAB + TAB + TAB + "public Object answer(InvocationOnMock invocationOnMock) throws Throwable {\n")
-                .append(TAB + TAB + TAB + TAB).append(getClassShort(innerFirst.getReturnArg().getClassName())).append(" result = values[count];\n")
+                .append(TAB + TAB + TAB + TAB).append(getClassShort(retType)).append(" result = values[count];\n")
                 .append(TAB + TAB + TAB + TAB + "if(count + 1 < values.length) count++;\n")
                 .append(TAB + TAB + TAB + TAB + "return result;\n")
                 .append(TAB + TAB + TAB + "}\n")
