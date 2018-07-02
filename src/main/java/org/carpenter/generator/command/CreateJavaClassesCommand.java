@@ -3,7 +3,6 @@ package org.carpenter.generator.command;
 import org.carpenter.core.dto.unit.method.MethodBaseInfo;
 import org.carpenter.core.property.GenerationProperties;
 import org.carpenter.core.property.GenerationPropertiesFactory;
-import org.carpenter.generator.UnitClassifier;
 import org.carpenter.generator.dto.source.MethodLine;
 import org.carpenter.generator.dto.source.MethodSource;
 import org.carpenter.generator.dto.source.Variable;
@@ -20,11 +19,16 @@ import static org.apache.commons.io.FileUtils.forceMkdir;
 import static org.apache.commons.io.FileUtils.write;
 import static org.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static org.carpenter.generator.TestGenerator.GENERATED_TEST_CLASS_POSTFIX;
+import static org.carpenter.generator.command.CreateInitMockMethodCommand.INIT_METHOD;
 import static org.carpenter.generator.command.CreateTestMethodCommand.TEST_ANNOTATION;
 import static org.carpenter.generator.util.GenerateUtil.createAndReturnPathName;
-import static org.object2source.util.GenerationUtil.*;
+import static org.object2source.util.GenerationUtil.getLastClassShort;
+import static org.object2source.util.GenerationUtil.getPackage;
 
 public class CreateJavaClassesCommand extends AbstractCommand {
+    public static final String PROVIDER_POSTFIX = "_Provider";
+    public static final String DATA_PROVIDER_ANNOTATION = "@DataProvider";
+
 
     private GenerationProperties props;
     private Map<String, Set<ClassExtInfo>> collectedTests;
@@ -39,7 +43,7 @@ public class CreateJavaClassesCommand extends AbstractCommand {
         try {
             saveJavaClassesAndPackages();
         } catch (IOException ioex) {
-            ioex.printStackTrace();
+            throw new IllegalStateException(ioex);
         }
     }
 
@@ -52,7 +56,13 @@ public class CreateJavaClassesCommand extends AbstractCommand {
             String packageFileStruct = pathname + "/" + packageName.replaceAll("\\.", "/");
             forceMkdir(new File(packageFileStruct));
             Set<ClassExtInfo> units = collectedTests.get(fullClassName);
-            List<ClassExtInfo> groupList = UnitClassifier.getSimilarClassInfoList(units);
+            List<ClassExtInfo> groupList = new ArrayList<>(units);
+            Collections.sort(groupList, new Comparator<ClassExtInfo>() {
+                @Override
+                public int compare(ClassExtInfo o1, ClassExtInfo o2) {
+                    return o1.getUnitName().compareTo(o2.getUnitName());
+                }
+            });
             if(units.size() != groupList.size()) {
                 throw new RuntimeException("Error while grouping units!");
             }
@@ -113,7 +123,7 @@ public class CreateJavaClassesCommand extends AbstractCommand {
         return methods;
     }
 
-    private Set<MethodSource> createCommonMethods(Set<MethodExtInfo> allMethods) {
+    private Set<MethodSource> createCommonMethods(List<MethodExtInfo> allMethods) {
         Set<MethodExtInfo> duplicateMethods = new HashSet<>();
         Set<MethodSource> checkMethodSet = new HashSet<>();
         for (MethodExtInfo extInfo : allMethods) {
@@ -147,7 +157,7 @@ public class CreateJavaClassesCommand extends AbstractCommand {
             methodSource.setUnitName(extInfo.createCommonMethodName() + argDefBuilder.toString());
             String definition = methodSource.getTestMethodDefinition();
             definition = definition.replace(extInfo.getUnitName(), methodSource.getUnitName());
-            String providerName = extInfo.createCommonMethodName() + "Provider";
+            String providerName = extInfo.createCommonMethodName() + PROVIDER_POSTFIX;
             definition = definition.replace(TEST_ANNOTATION, TEST_ANNOTATION + "(dataProvider = \"" + providerName + "\")");
             methodSource.setTestMethodDefinition(definition);
             commonMethods.add(methodSource);
@@ -155,53 +165,120 @@ public class CreateJavaClassesCommand extends AbstractCommand {
         return commonMethods;
     }
 
-    private Set<MethodExtInfo> createDataProviders(Set<MethodExtInfo> allMethods) {
-        Set<MethodSource> commonMethods = createCommonMethods(allMethods);
-        Set<MethodExtInfo> result = new HashSet<>();
+    private List<MethodExtInfo> createDataProviders(Set<MethodExtInfo> allMethods) {
+        List<MethodExtInfo> allMethodsSortedList = new ArrayList<>(allMethods);
+        Collections.sort(allMethodsSortedList, new Comparator<MethodExtInfo>() {
+            @Override
+            public int compare(MethodExtInfo o1, MethodExtInfo o2) {
+                return o1.getUnitName().compareTo(o2.getUnitName());
+            }
+        });
 
-        Map<MethodBaseInfo, Set<MethodExtInfo>> groupingMap = new HashMap<>();
-        for (MethodExtInfo extInfo : allMethods) {
-            if (commonMethods.contains(extInfo.createMethodSource())) {
+        Set<MethodSource> commonMethods = createCommonMethods(allMethodsSortedList);
+        List<MethodSource> commonMethodsSortedList = new ArrayList<>(commonMethods);
+        Collections.sort(commonMethodsSortedList, new Comparator<MethodSource>() {
+            @Override
+            public int compare(MethodSource o1, MethodSource o2) {
+                return o1.getUnitName().compareTo(o2.getUnitName());
+            }
+        });
+
+        Set<MethodExtInfo> resultSet = new HashSet<>();
+
+        int allIndexCounter = 1;
+        int commonIndexCounter = 5000;
+        int arrayProvIndexCounter = 10000;
+        int dataProvIndexCounter = 15000;
+
+        Map<MethodBaseInfo, List<MethodExtInfo>> groupingMap = new HashMap<>();
+        for (MethodExtInfo extInfo : allMethodsSortedList) {
+            if (commonMethodsSortedList.contains(extInfo.createMethodSource())) {
                 MethodBaseInfo key = new MethodBaseInfo(extInfo.getClassName(), extInfo.createCommonMethodName());
-                Set<MethodExtInfo> methodGroup = groupingMap.get(key);
+                List<MethodExtInfo> methodGroup = groupingMap.get(key);
                 if (methodGroup == null) {
-                    methodGroup = new HashSet<>();
+                    methodGroup = new ArrayList<>();
                     groupingMap.put(key, methodGroup);
                 }
                 methodGroup.add(extInfo);
             } else {
-                result.add(extInfo);
+                if (extInfo.getUnitName().equals(INIT_METHOD)) {
+                    extInfo.setIndex(0);
+                } else if (extInfo.isArrayProvider()) {
+                    extInfo.setIndex(arrayProvIndexCounter);
+                    arrayProvIndexCounter++;
+                } else {
+                    extInfo.setIndex(allIndexCounter);
+                    allIndexCounter++;
+                }
+                resultSet.add(extInfo);
             }
         }
-
-        for (Map.Entry<MethodBaseInfo, Set<MethodExtInfo>> entry : groupingMap.entrySet()) {
+        for (Map.Entry<MethodBaseInfo, List<MethodExtInfo>> entry : groupingMap.entrySet()) {
             StringBuilder dataProviderBuilder = new StringBuilder();
-            String methodName = entry.getKey().getUnitName() + "Provider()";
+            String methodName = entry.getKey().getUnitName() + PROVIDER_POSTFIX + "()";
             dataProviderBuilder
-                    .append(TAB + "@DataProvider\n")
+                    .append(TAB + DATA_PROVIDER_ANNOTATION +"\n")
                     .append(TAB + "public Object[][] ")
                     .append(methodName).append(" throws Exception {\n")
                     .append(TAB + TAB + "return new Object[][] {\n");
+            Collections.sort(entry.getValue(), new Comparator<MethodExtInfo>() {
+                @Override
+                public int compare(MethodExtInfo o1, MethodExtInfo o2) {
+                    return o1.getUnitName().compareTo(o2.getUnitName());
+                }
+            });
             Iterator<MethodExtInfo> iterator = entry.getValue().iterator();
             while (iterator.hasNext()) {
                 MethodExtInfo extInfo = iterator.next();
                 MethodSource methodSource = extInfo.createMethodSource();
-                dataProviderBuilder.append(TAB + TAB + TAB + "{");
+                dataProviderBuilder.append(TAB + TAB + TAB + "{ ");
                 for (MethodLine line : methodSource.getLines()) {
                     for (Variable var : line.getVariables()) {
                         dataProviderBuilder.append(var.getValue()).append(", ");
                     }
                 }
-                dataProviderBuilder.delete(dataProviderBuilder.length() - 2, dataProviderBuilder.length()).append("}");
+                dataProviderBuilder.delete(dataProviderBuilder.length() - 2, dataProviderBuilder.length()).append(" }");
                 if (iterator.hasNext()) dataProviderBuilder.append(", ");
                 dataProviderBuilder.append("\n");
             }
             dataProviderBuilder.append(TAB + TAB + "};\n").append(TAB + "}\n");
-            result.add(new MethodExtInfo(entry.getKey().getClassName(), methodName, dataProviderBuilder.toString()));
+            resultSet.add(new MethodExtInfo(entry.getKey().getClassName(), methodName, dataProviderBuilder.toString(), dataProvIndexCounter));
+            dataProvIndexCounter++;
         }
-        for (MethodSource methodSource : commonMethods) {
-            result.add(methodSource.createMethodExtInfo());
+        for (MethodSource methodSource : commonMethodsSortedList) {
+            Map<String, String> varChangeMap = new HashMap<>();
+            List<MethodLine> removeLines = new ArrayList<>();
+            for (MethodLine line : methodSource.getLines()) {
+                for (Variable var : line.getVariables()) {
+                    if (var.getName() != null) {
+                        varChangeMap.put(var.getName(), var.getValue());
+                        removeLines.add(line);
+                    }
+                }
+            }
+            for (MethodLine rl : removeLines) {
+                methodSource.getLines().remove(rl);
+            }
+            for (MethodLine line : methodSource.getLines()) {
+                String expression = line.getExpression();
+                for (Map.Entry<String, String> entry : varChangeMap.entrySet()) {
+                    expression = expression.replace(entry.getKey(), entry.getValue());
+                }
+                line.setExpression(expression);
+            }
+            MethodExtInfo extInfo = methodSource.createMethodExtInfo();
+            extInfo.setIndex(commonIndexCounter);
+            resultSet.add(extInfo);
+            commonIndexCounter++;
         }
+
+        List<MethodExtInfo> result = new ArrayList<>(resultSet);
+        Collections.sort(result, new Comparator<MethodExtInfo>() {
+            @Override
+            public int compare(MethodExtInfo o1, MethodExtInfo o2) {
+                return o1.getIndex() - o2.getIndex();
+            }
+        });
         return result;
     }
 }

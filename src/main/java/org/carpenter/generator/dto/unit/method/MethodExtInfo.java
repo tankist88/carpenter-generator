@@ -10,9 +10,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.carpenter.generator.command.CreateTestMethodCommand.HASH_CODE_SEPARATOR;
-import static org.carpenter.generator.command.CreateTestMethodCommand.TEST_ANNOTATION;
-import static org.carpenter.generator.command.CreateTestMethodCommand.TEST_METHOD_PREFIX;
+import static org.carpenter.generator.command.CreateJavaClassesCommand.DATA_PROVIDER_ANNOTATION;
+import static org.carpenter.generator.command.CreateJavaClassesCommand.PROVIDER_POSTFIX;
+import static org.carpenter.generator.command.CreateTestMethodCommand.*;
 import static org.carpenter.generator.dto.source.MethodLine.PLACE_HOLDER;
 import static org.object2source.util.GenerationUtil.upFirst;
 
@@ -21,22 +21,46 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
         "private", "public", "protected", "static", "final", "volatile", "transient"
     );
 
+    private int index = Integer.MAX_VALUE;
+
     public MethodExtInfo() {
     }
     public MethodExtInfo(String className, String unitName, String body) {
         super(className, validateUnitName(unitName), body);
     }
 
+    public MethodExtInfo(String className, String unitName, String body, int index) {
+        super(className, unitName, body);
+        this.index = index;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public void setIndex(int index) {
+        this.index = index;
+    }
+
     public String createCommonMethodName() {
+        String hashCodeStr = String.valueOf(createMethodSource().hashCode()).replace("-", "_");
         if (getUnitName().startsWith(TEST_METHOD_PREFIX)) {
-            return getUnitName().substring(0, getUnitName().indexOf(HASH_CODE_SEPARATOR));
+            return getUnitName().substring(0, getUnitName().indexOf(HASH_CODE_SEPARATOR)) + "_" + hashCodeStr;
         } else {
-            return "common" + upFirst(getUnitName());
+            return "common" + upFirst(getUnitName()) + "_" + hashCodeStr;
         }
     }
 
     public boolean isTestMethod() {
         return getUnitName().startsWith(TEST_METHOD_PREFIX) && getBody().contains(TEST_ANNOTATION);
+    }
+
+    public boolean isArrayProvider() {
+        return getUnitName().startsWith(ARRAY_PROVIDER_PREFIX);
+    }
+
+    public boolean isDataProvider() {
+        return getUnitName().endsWith(PROVIDER_POSTFIX + "()");
     }
 
     private static String validateUnitName(String unitName) {
@@ -82,7 +106,8 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
                 int i = 1;
                 while (m.find()) {
                     String text = m.group(0);
-                    if (line.replace(" ", "").indexOf("=") > 0) {
+                    String lineWithoutSpaces = line.replace(" ", "");
+                    if (lineWithoutSpaces.indexOf("=") > 0) {
                         String typeStr = Object.class.getName();
                         for (String e : line.trim().split(" ")) {
                             if (!JAVA_MODIFIERS.contains(e.trim())) {
@@ -91,7 +116,8 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
                             }
                         }
                         String type = typeStr.replace(" ", "");
-                        methodLine.getVariables().add(new Variable(i, text, type));
+                        String name = lineWithoutSpaces.substring(lineWithoutSpaces.indexOf(type) + type.length(), lineWithoutSpaces.indexOf("="));
+                        methodLine.getVariables().add(new Variable(i, text, type, name));
                     } else {
                         methodLine.getVariables().add(new Variable(i, text));
                     }

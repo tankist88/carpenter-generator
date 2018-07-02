@@ -12,6 +12,7 @@ import static org.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static org.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
 
 public class CreateInitMockMethodCommand extends AbstractReturnClassInfoCommand<MethodExtInfo> {
+    static final String INIT_METHOD = "init()";
 
     private StringBuilder builder;
 
@@ -35,35 +36,21 @@ public class CreateInitMockMethodCommand extends AbstractReturnClassInfoCommand<
         return methods;
     }
 
-
     private void createInitMockMethod() {
-        String initMockMethodName = "init()";
         builder.append(TAB + "@BeforeMethod\n")
                .append(TAB + "public void ")
-               .append(initMockMethodName)
+               .append(INIT_METHOD)
                .append(" {\n")
                .append(TAB + TAB + "initMocks(this);\n");
 
-        for(FieldProperties f : callInfo.getServiceFields()) {
-            if(f.getDeclaringClass().equals(callInfo.getClassName()) && !Modifier.isPrivate(f.getModifiers())) {
-                builder.append(TAB)
-                       .append(TAB)
-                       .append(TEST_INST_VAR_NAME)
-                       .append(".")
-                       .append(f.getUnitName())
-                       .append(" = ")
-                       .append(f.getUnitName())
-                       .append(";\n");
+        for (FieldProperties f : callInfo.getServiceFields()) {
+            if (f.getDeclaringClass().equals(callInfo.getClassName()) && !Modifier.isPrivate(f.getModifiers())) {
+                builder.append(TAB + TAB + TEST_INST_VAR_NAME).append(".")
+                       .append(f.getUnitName()).append(" = ").append(f.getUnitName()).append(";\n");
             }
         }
 
-        builder.append(TAB + "}\n\n");
-
-        MethodExtInfo method = new MethodExtInfo();
-        method.setClassName(callInfo.getClassName());
-        method.setUnitName(initMockMethodName);
-        method.setBody(builder.toString());
-
-        methods = Collections.singletonList(method);
+        builder.append(TAB + "}\n");
+        methods = Collections.singletonList(new MethodExtInfo(callInfo.getClassName(), INIT_METHOD, builder.toString()));
     }
 }

@@ -99,7 +99,12 @@ public class TypeHelper {
     }
 
     public static String typeOfGenArg(GeneratedArgument arg) {
-        return arg != null ? convertPrimitiveToWrapper(arg.getNearestInstantAbleClass()) : null;
+        if (arg == null) return null;
+        if (isPrimitive(arg.getNearestInstantAbleClass()) || isWrapper(arg.getNearestInstantAbleClass())) {
+            return getLastClassShort(convertPrimitiveToWrapper(arg.getNearestInstantAbleClass()));
+        } else {
+            return arg.getNearestInstantAbleClass();
+        }
     }
 
     public static boolean simpleType(GeneratedArgument arg) {

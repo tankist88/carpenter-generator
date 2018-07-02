@@ -6,15 +6,17 @@ public class Variable {
     private int num;
     private String value;
     private String type;
+    private String name;
 
     public Variable(int num, String value) {
-        this(num, value, Object.class.getName());
+        this(num, value, "Object", null);
     }
 
-    public Variable(int num, String value, String type) {
+    public Variable(int num, String value, String type, String name) {
         this.num = num;
         this.value = value;
         this.type = type;
+        this.name = name;
     }
 
     public int getNum() {
@@ -39,6 +41,14 @@ public class Variable {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public boolean isArray() {

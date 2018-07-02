@@ -87,8 +87,8 @@ public class PopulatePrevMethodsCommand extends AbstractReturnClassInfoCommand<C
                             }
                         }
                         field.setBody(TAB + node.toString()
-                                .replaceAll("\r\n", "\n")
-                                .replaceAll("\n",  "\n" + TAB) + "\n");
+                                .replace("\r\n", "\n")
+                                .replace("\n",  "\n" + TAB) + "\n");
                         units.add(field);
                     } else if (node instanceof MethodDeclaration) {
                         MethodExtInfo method = new MethodExtInfo();
@@ -100,9 +100,23 @@ public class PopulatePrevMethodsCommand extends AbstractReturnClassInfoCommand<C
                             if (iterator.hasNext()) paramStrBuilder.append(", ");
                         }
                         method.setUnitName(((MethodDeclaration) node).getName() + "(" + paramStrBuilder.toString() + ")");
-                        method.setBody(TAB + node.toString()
-                                .replaceAll("\r\n", "\n")
-                                .replaceAll("\n", "\n" + TAB) + "\n");
+
+                        String body = TAB + node.toString()
+                                .replace("\r\n", "\n")
+                                .replace("\n", "\n" + TAB) + "\n";
+                        // TODO delete this code, fix format for multi row expressions
+                        // START
+                        if (method.isArrayProvider()) {
+                            body = body.replace("values = { ", "values = {\n" + TAB + TAB + TAB);
+                            body = body.replace("(), ", "(),\n" + TAB + TAB + TAB);
+                            body = body.replace("() };", "()\n" + TAB + TAB + "};");
+                        } else if (method.isDataProvider()) {
+                            body = body.replace("Object[][] { ", "Object[][] {\n" + TAB + TAB + TAB);
+                            body = body.replace("}, {", "}, \n" + TAB + TAB + TAB + "{");
+                            body = body.replace("} };", "}\n" + TAB + TAB + "};");
+                        }
+                        // END
+                        method.setBody(body);
                         units.add(method);
                         if (fullClassName.startsWith(dataProviderClassPattern)) {
                             Set<String> providersSignatures = providerSignatureMap.get(fullClassName);
