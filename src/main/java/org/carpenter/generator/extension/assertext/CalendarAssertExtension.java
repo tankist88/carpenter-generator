@@ -16,7 +16,7 @@ public class CalendarAssertExtension implements AssertExtension {
     @Override
     public String getAssertBlock(String dataProviderMethod) {
         return  TAB + TAB + "assertEquals(result.getTimeInMillis(), " + dataProviderMethod + ".getTimeInMillis());\n" +
-                TAB + TAB + "if (result.getTimeZone() != null) { \n" +
+                TAB + TAB + "if (result.getTimeZone() != null) {\n" +
                 TAB + TAB + TAB + "assertEquals(result.getTimeZone().getID(), " + dataProviderMethod + ".getTimeZone().getID());\n" +
                 TAB + TAB + "}\n";
     }

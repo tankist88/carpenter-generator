@@ -12,7 +12,7 @@ import static org.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static org.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
 
 public class CreateInitMockMethodCommand extends AbstractReturnClassInfoCommand<MethodExtInfo> {
-    static final String INIT_METHOD = "init()";
+    public static final String INIT_METHOD = "init()";
 
     private StringBuilder builder;
 

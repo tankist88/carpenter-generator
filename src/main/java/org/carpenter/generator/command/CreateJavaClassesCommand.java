@@ -19,7 +19,6 @@ import static org.apache.commons.io.FileUtils.forceMkdir;
 import static org.apache.commons.io.FileUtils.write;
 import static org.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static org.carpenter.generator.TestGenerator.GENERATED_TEST_CLASS_POSTFIX;
-import static org.carpenter.generator.command.CreateInitMockMethodCommand.INIT_METHOD;
 import static org.carpenter.generator.command.CreateTestMethodCommand.TEST_ANNOTATION;
 import static org.carpenter.generator.util.GenerateUtil.createAndReturnPathName;
 import static org.object2source.util.GenerationUtil.getLastClassShort;
@@ -28,7 +27,7 @@ import static org.object2source.util.GenerationUtil.getPackage;
 public class CreateJavaClassesCommand extends AbstractCommand {
     public static final String PROVIDER_POSTFIX = "_Provider";
     public static final String DATA_PROVIDER_ANNOTATION = "@DataProvider";
-
+    public static final String DATA_PROVIDER_PARAMETER = "dataProvider";
 
     private GenerationProperties props;
     private Map<String, Set<ClassExtInfo>> collectedTests;
@@ -158,7 +157,7 @@ public class CreateJavaClassesCommand extends AbstractCommand {
             String definition = methodSource.getTestMethodDefinition();
             definition = definition.replace(extInfo.getUnitName(), methodSource.getUnitName());
             String providerName = extInfo.createCommonMethodName() + PROVIDER_POSTFIX;
-            definition = definition.replace(TEST_ANNOTATION, TEST_ANNOTATION + "(dataProvider = \"" + providerName + "\")");
+            definition = definition.replace(TEST_ANNOTATION, TEST_ANNOTATION + "(" + DATA_PROVIDER_PARAMETER + " = \"" + providerName + "\")");
             methodSource.setTestMethodDefinition(definition);
             commonMethods.add(methodSource);
         }
@@ -185,11 +184,6 @@ public class CreateJavaClassesCommand extends AbstractCommand {
 
         Set<MethodExtInfo> resultSet = new HashSet<>();
 
-        int allIndexCounter = 1;
-        int commonIndexCounter = 5000;
-        int arrayProvIndexCounter = 10000;
-        int dataProvIndexCounter = 15000;
-
         Map<MethodBaseInfo, List<MethodExtInfo>> groupingMap = new HashMap<>();
         for (MethodExtInfo extInfo : allMethodsSortedList) {
             if (commonMethodsSortedList.contains(extInfo.createMethodSource())) {
@@ -201,15 +195,6 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                 }
                 methodGroup.add(extInfo);
             } else {
-                if (extInfo.getUnitName().equals(INIT_METHOD)) {
-                    extInfo.setIndex(0);
-                } else if (extInfo.isArrayProvider()) {
-                    extInfo.setIndex(arrayProvIndexCounter);
-                    arrayProvIndexCounter++;
-                } else {
-                    extInfo.setIndex(allIndexCounter);
-                    allIndexCounter++;
-                }
                 resultSet.add(extInfo);
             }
         }
@@ -242,8 +227,7 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                 dataProviderBuilder.append("\n");
             }
             dataProviderBuilder.append(TAB + TAB + "};\n").append(TAB + "}\n");
-            resultSet.add(new MethodExtInfo(entry.getKey().getClassName(), methodName, dataProviderBuilder.toString(), dataProvIndexCounter));
-            dataProvIndexCounter++;
+            resultSet.add(new MethodExtInfo(entry.getKey().getClassName(), methodName, dataProviderBuilder.toString()));
         }
         for (MethodSource methodSource : commonMethodsSortedList) {
             Map<String, String> varChangeMap = new HashMap<>();
@@ -266,10 +250,29 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                 }
                 line.setExpression(expression);
             }
-            MethodExtInfo extInfo = methodSource.createMethodExtInfo();
-            extInfo.setIndex(commonIndexCounter);
-            resultSet.add(extInfo);
-            commonIndexCounter++;
+            resultSet.add(methodSource.createMethodExtInfo());
+        }
+
+        int allIndexCounter = 1;
+        int commonIndexCounter = 5000;
+        int arrayProvIndexCounter = 10000;
+        int dataProvIndexCounter = 15000;
+        for (MethodExtInfo extInfo : resultSet) {
+            if (extInfo.isInitMethod()) {
+                extInfo.setIndex(0);
+            } else if (extInfo.isArrayProvider()) {
+                extInfo.setIndex(arrayProvIndexCounter);
+                arrayProvIndexCounter++;
+            } else if (extInfo.isDataProvider()) {
+                extInfo.setIndex(dataProvIndexCounter);
+                dataProvIndexCounter++;
+            } else if (extInfo.isCommonMethod()) {
+                extInfo.setIndex(commonIndexCounter);
+                commonIndexCounter++;
+            } else {
+                extInfo.setIndex(allIndexCounter);
+                allIndexCounter++;
+            }
         }
 
         List<MethodExtInfo> result = new ArrayList<>(resultSet);

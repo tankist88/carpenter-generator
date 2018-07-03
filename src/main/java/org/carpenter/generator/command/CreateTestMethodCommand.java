@@ -259,14 +259,15 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         }
 
         StringBuilder mockBuilder = new StringBuilder();
-        mockBuilder.append(TAB + TAB + "doAnswer(new Answer() {\n")
-                .append(TAB + TAB + TAB + "private int count = 0;\n")
+        mockBuilder.append(TAB + TAB + "doAnswer(new Answer() {\n" + TAB + "\n")
+                .append(TAB + TAB + TAB + "private int count = 0;\n" + TAB + "\n")
                 .append(TAB + TAB + TAB + "private ")
                 .append(getClassShort(retType)).append("[] values = ").append(createArrayProvider(innerSet)).append(";\n")
                 .append(TAB + TAB + TAB + "@Override\n")
                 .append(TAB + TAB + TAB + "public Object answer(InvocationOnMock invocationOnMock) throws Throwable {\n")
                 .append(TAB + TAB + TAB + TAB).append(getClassShort(retType)).append(" result = values[count];\n")
-                .append(TAB + TAB + TAB + TAB + "if(count + 1 < values.length) count++;\n")
+                .append(TAB + TAB + TAB + TAB + "if (count + 1 < values.length)\n")
+                .append(TAB + TAB + TAB + TAB + TAB + "count++;\n")
                 .append(TAB + TAB + TAB + TAB + "return result;\n")
                 .append(TAB + TAB + TAB + "}\n")
                 .append(TAB + TAB + "}).when(").append(varName).append(").").append(innerFirst.getUnitName());

@@ -104,18 +104,18 @@ public class PopulatePrevMethodsCommand extends AbstractReturnClassInfoCommand<C
                         String body = TAB + node.toString()
                                 .replace("\r\n", "\n")
                                 .replace("\n", "\n" + TAB) + "\n";
-                        // TODO delete this code, fix format for multi row expressions
-                        // START
+                        // TODO Fix format for multi row expressions
+                        // START temp code
                         if (method.isArrayProvider()) {
-                            body = body.replace("values = { ", "values = {\n" + TAB + TAB + TAB);
+                            body = body.replace("= { ", "= {\n" + TAB + TAB + TAB);
                             body = body.replace("(), ", "(),\n" + TAB + TAB + TAB);
                             body = body.replace("() };", "()\n" + TAB + TAB + "};");
                         } else if (method.isDataProvider()) {
-                            body = body.replace("Object[][] { ", "Object[][] {\n" + TAB + TAB + TAB);
+                            body = body.replace("[][] { ", "[][] {\n" + TAB + TAB + TAB);
                             body = body.replace("}, {", "}, \n" + TAB + TAB + TAB + "{");
                             body = body.replace("} };", "}\n" + TAB + TAB + "};");
                         }
-                        // END
+                        // END temp code
                         method.setBody(body);
                         units.add(method);
                         if (fullClassName.startsWith(dataProviderClassPattern)) {

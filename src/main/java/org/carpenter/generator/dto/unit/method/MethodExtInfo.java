@@ -10,7 +10,8 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.carpenter.generator.command.CreateJavaClassesCommand.DATA_PROVIDER_ANNOTATION;
+import static org.carpenter.generator.command.CreateInitMockMethodCommand.INIT_METHOD;
+import static org.carpenter.generator.command.CreateJavaClassesCommand.DATA_PROVIDER_PARAMETER;
 import static org.carpenter.generator.command.CreateJavaClassesCommand.PROVIDER_POSTFIX;
 import static org.carpenter.generator.command.CreateTestMethodCommand.*;
 import static org.carpenter.generator.dto.source.MethodLine.PLACE_HOLDER;
@@ -61,6 +62,14 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
 
     public boolean isDataProvider() {
         return getUnitName().endsWith(PROVIDER_POSTFIX + "()");
+    }
+
+    public boolean isInitMethod() {
+        return getUnitName().equals(INIT_METHOD);
+    }
+
+    public boolean isCommonMethod() {
+        return getUnitName().contains(createCommonMethodName()) && getBody().contains(TEST_ANNOTATION) && getBody().contains(DATA_PROVIDER_PARAMETER);
     }
 
     private static String validateUnitName(String unitName) {
