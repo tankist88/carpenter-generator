@@ -402,7 +402,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 boolean allReturnEquals = true;
                 ProviderResult prevProvider = set.iterator().next().getReturnArg().getGenerated();
                 for(MethodCallInfo m : set) {
-                    if(!m.getReturnArg().getGenerated().equals(prevProvider)) {
+                    if (m.getReturnArg().getGenerated() != null && !m.getReturnArg().getGenerated().equals(prevProvider)) {
                         allReturnEquals = false;
                         break;
                     } else {

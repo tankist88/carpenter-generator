@@ -172,7 +172,10 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                 return o1.getUnitName().compareTo(o2.getUnitName());
             }
         });
+        return createDataProviders(allMethodsSortedList);
+    }
 
+    private List<MethodExtInfo> createDataProviders(List<MethodExtInfo> allMethodsSortedList) {
         Set<MethodSource> commonMethods = createCommonMethods(allMethodsSortedList);
         List<MethodSource> commonMethodsSortedList = new ArrayList<>(commonMethods);
         Collections.sort(commonMethodsSortedList, new Comparator<MethodSource>() {
