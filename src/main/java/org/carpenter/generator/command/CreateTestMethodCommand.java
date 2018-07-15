@@ -25,6 +25,7 @@ import static java.util.Collections.singletonList;
 import static org.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static org.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
 import static org.carpenter.generator.util.TypeHelper.createImportInfo;
+import static org.carpenter.generator.util.TypeHelper.isSameTypes;
 import static org.carpenter.generator.util.TypeHelper.typeOfGenArg;
 import static org.object2source.util.GenerationUtil.*;
 
@@ -50,6 +51,8 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
     private Set<MethodExtInfo> arrayProviders;
 
+    private Set<FieldProperties> testClassHierarchy;
+
     public CreateTestMethodCommand(MethodCallInfo callInfo, Map<String, Set<String>> providerSignatureMap, Map<String, Set<ClassExtInfo>> dataProviders, List<AssertExtension> assertExtensions) {
         this.callInfo = callInfo;
         this.providerSignatureMap = providerSignatureMap;
@@ -63,6 +66,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             this.assertExtensions = new ArrayList<>();
         }
         this.arrayProviders = new HashSet<>();
+        this.testClassHierarchy = new HashSet<>();
     }
 
     @Override
@@ -97,7 +101,6 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         serviceClasses.add(testProp);
         serviceClasses.addAll(callInfo.getServiceFields());
 
-        Set<FieldProperties> testClassHierarchy = new HashSet<>();
         testClassHierarchy.add(testProp);
 
         builder.append(TAB + TEST_ANNOTATION + "\n")
@@ -207,11 +210,9 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         return resultList;
     }
 
-    private boolean skipMock(MethodCallInfo callInfo, Set<FieldProperties> serviceClasses, boolean multiple) {
+    private boolean skipMock(MethodCallInfo callInfo, Set<FieldProperties> serviceClasses) {
         boolean staticMethod = Modifier.isStatic(callInfo.getMethodModifiers());
-        boolean privateMethod = Modifier.isPrivate(callInfo.getMethodModifiers());
-        boolean protectedMethod = Modifier.isProtected(callInfo.getMethodModifiers());
-        return (staticMethod || (multiple && (privateMethod || protectedMethod)) || !TypeHelper.isSameTypes(callInfo, serviceClasses));
+        return (staticMethod || (!isSameTypes(callInfo, serviceClasses) && !isSameTypes(callInfo, testClassHierarchy)));
     }
 
     private String createArrayProvider(Set<MethodCallInfo> innerSet) {
@@ -248,52 +249,65 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private Set<PreparedMock> createMultipleMock(Set<MethodCallInfo> innerSet, Set<FieldProperties> serviceClasses, Set<FieldProperties> testClassHierarchy) {
         MethodCallInfo innerFirst = innerSet.iterator().next();
 
-        if(skipMock(innerFirst, serviceClasses, true)) return null;
+        if (skipMock(innerFirst, serviceClasses)) return null;
 
-        boolean sameTypeWithTest = TypeHelper.isSameTypes(innerFirst, testClassHierarchy);
-        String varName = sameTypeWithTest ? TEST_INST_VAR_NAME : TypeHelper.determineVarName(innerFirst, serviceClasses);
-
-        String retType = innerFirst.getReturnArg().getClassName();
-        if(!isPrimitive(retType) && !isWrapper(retType) && !retType.equals(String.class.getName())) {
-            imports.add(createImportInfo(retType, callInfo.getClassName()));
-        }
-
-        StringBuilder mockBuilder = new StringBuilder();
-        mockBuilder.append(TAB + TAB + "doAnswer(new Answer() {\n" + TAB + "\n")
-                .append(TAB + TAB + TAB + "private int count = 0;\n" + TAB + "\n")
-                .append(TAB + TAB + TAB + "private ")
-                .append(getClassShort(retType)).append("[] values = ").append(createArrayProvider(innerSet)).append(";\n")
-                .append(TAB + TAB + TAB + "@Override\n")
-                .append(TAB + TAB + TAB + "public Object answer(InvocationOnMock invocationOnMock) throws Throwable {\n")
-                .append(TAB + TAB + TAB + TAB).append(getClassShort(retType)).append(" result = values[count];\n")
-                .append(TAB + TAB + TAB + TAB + "if (count + 1 < values.length)\n")
-                .append(TAB + TAB + TAB + TAB + TAB + "count++;\n")
-                .append(TAB + TAB + TAB + TAB + "return result;\n")
-                .append(TAB + TAB + TAB + "}\n")
-                .append(TAB + TAB + "}).when(").append(varName).append(").").append(innerFirst.getUnitName());
-
-        StringBuilder verifyBuilder = new StringBuilder();
-        verifyBuilder.append(TAB + TAB + "verify(");
-        verifyBuilder.append(varName).append(", atLeastOnce()).").append(innerFirst.getUnitName());
-        appendMockArguments(mockBuilder, innerFirst, imports);
-        appendMockArguments(verifyBuilder, innerFirst, imports);
-        mockBuilder.append(";\n");
-        verifyBuilder.append(";\n");
         Set<PreparedMock> mocks = new HashSet<>();
-        mocks.add(new PreparedMock(mockBuilder.toString(), verifyBuilder.toString()));
+
+        boolean sameTypeWithTest = isSameTypes(innerFirst, testClassHierarchy);
+        boolean voidMethod = innerFirst.isVoidMethod();
+        boolean privateMethod = Modifier.isPrivate(innerFirst.getMethodModifiers());
+        boolean protectedMethod = Modifier.isProtected(innerFirst.getMethodModifiers());
+        boolean anonymousClass = getLastClassShort(innerFirst.getClassName()).matches("\\d+");
+        if ((voidMethod && sameTypeWithTest) || privateMethod || protectedMethod || anonymousClass) {
+            List<PreparedMock> innerMocks = createMocks(innerFirst, serviceClasses, testClassHierarchy);
+            if(innerMocks != null) {
+                mocks.addAll(innerMocks);
+            }
+        } else {
+            String varName = sameTypeWithTest ? TEST_INST_VAR_NAME : TypeHelper.determineVarName(innerFirst, serviceClasses);
+
+            String retType = innerFirst.getReturnArg().getClassName();
+            if (!isPrimitive(retType) && !isWrapper(retType) && !retType.equals(String.class.getName())) {
+                imports.add(createImportInfo(retType, callInfo.getClassName()));
+            }
+
+            StringBuilder mockBuilder = new StringBuilder();
+            mockBuilder.append(TAB + TAB + "doAnswer(new Answer() {\n" + TAB + "\n")
+                    .append(TAB + TAB + TAB + "private int count = 0;\n" + TAB + "\n")
+                    .append(TAB + TAB + TAB + "private ")
+                    .append(getClassShort(retType)).append("[] values = ").append(createArrayProvider(innerSet)).append(";\n")
+                    .append(TAB + TAB + TAB + "@Override\n")
+                    .append(TAB + TAB + TAB + "public Object answer(InvocationOnMock invocationOnMock) throws Throwable {\n")
+                    .append(TAB + TAB + TAB + TAB).append(getClassShort(retType)).append(" result = values[count];\n")
+                    .append(TAB + TAB + TAB + TAB + "if (count + 1 < values.length)\n")
+                    .append(TAB + TAB + TAB + TAB + TAB + "count++;\n")
+                    .append(TAB + TAB + TAB + TAB + "return result;\n")
+                    .append(TAB + TAB + TAB + "}\n")
+                    .append(TAB + TAB + "}).when(").append(varName).append(").").append(innerFirst.getUnitName());
+
+            StringBuilder verifyBuilder = new StringBuilder();
+            verifyBuilder.append(TAB + TAB + "verify(");
+            verifyBuilder.append(varName).append(", atLeastOnce()).").append(innerFirst.getUnitName());
+            appendMockArguments(mockBuilder, innerFirst, imports);
+            appendMockArguments(verifyBuilder, innerFirst, imports);
+            mockBuilder.append(";\n");
+            verifyBuilder.append(";\n");
+            mocks.add(new PreparedMock(mockBuilder.toString(), verifyBuilder.toString()));
+        }
         return mocks;
     }
 
     private Set<PreparedMock> createSingleMock(MethodCallInfo inner, Set<FieldProperties> serviceClasses, Set<FieldProperties> testClassHierarchy) {
-        if(skipMock(inner, serviceClasses, false)) return null;
+        if (skipMock(inner, serviceClasses)) return null;
 
         Set<PreparedMock> mocks = new HashSet<>();
 
-        boolean sameTypeWithTest = TypeHelper.isSameTypes(inner, testClassHierarchy);
+        boolean sameTypeWithTest = isSameTypes(inner, testClassHierarchy);
         boolean voidMethod = inner.isVoidMethod();
         boolean privateMethod = Modifier.isPrivate(inner.getMethodModifiers());
         boolean protectedMethod = Modifier.isProtected(inner.getMethodModifiers());
-        if((voidMethod && sameTypeWithTest) || privateMethod || protectedMethod) {
+        boolean anonymousClass = getLastClassShort(inner.getClassName()).matches("\\d+");
+        if ((voidMethod && sameTypeWithTest) || privateMethod || protectedMethod || anonymousClass) {
             List<PreparedMock> innerMocks = createMocks(inner, serviceClasses, testClassHierarchy);
             if(innerMocks != null) {
                 mocks.addAll(innerMocks);

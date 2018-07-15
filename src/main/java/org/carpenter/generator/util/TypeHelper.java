@@ -8,6 +8,8 @@ import org.carpenter.generator.enums.TypeCategory;
 
 import java.util.*;
 
+import static org.carpenter.generator.enums.TypeCategory.CLASS;
+import static org.carpenter.generator.enums.TypeCategory.INTERFACE;
 import static org.object2source.util.GenerationUtil.*;
 
 public class TypeHelper {
@@ -25,11 +27,11 @@ public class TypeHelper {
     }
 
     private static int matchCountInServices(MethodCallInfo callInfo, FieldProperties serviceClass, TypeCategory typeCategory) {
-        if(isPrimitive(callInfo.getClassName()) && isPrimitive(serviceClass.getClassName())) {
+        if (isPrimitive(callInfo.getClassName()) && isPrimitive(serviceClass.getClassName())) {
             return callInfo.getClassName().equals(serviceClass.getClassName()) ? 1 : 0;
-        } else if(isPrimitive(callInfo.getClassName()) && !isPrimitive(serviceClass.getClassName())) {
+        } else if (isPrimitive(callInfo.getClassName()) && !isPrimitive(serviceClass.getClassName())) {
             return 0;
-        } else if(!isPrimitive(callInfo.getClassName()) && isPrimitive(serviceClass.getClassName())) {
+        } else if (!isPrimitive(callInfo.getClassName()) && isPrimitive(serviceClass.getClassName())) {
             return 0;
         }
         int matchCount = 0;
@@ -38,13 +40,13 @@ public class TypeHelper {
         classesAndInterfaces.addAll(callInfo.getInterfacesHierarchy());
         Set<String> extendedServices = new HashSet<>();
         extendedServices.add(serviceClass.getClassName());
-        if(TypeCategory.CLASS.equals(typeCategory)) {
+        if (CLASS.equals(typeCategory)) {
             extendedServices.addAll(serviceClass.getClassHierarchy());
-        } else if(TypeCategory.INTERFACE.equals(typeCategory)) {
+        } else if (INTERFACE.equals(typeCategory)) {
             extendedServices.addAll(serviceClass.getInterfacesHierarchy());
         }
-        for(String c : classesAndInterfaces) {
-            if(extendedServices.contains(c)) {
+        for (String c : classesAndInterfaces) {
+            if (extendedServices.contains(getOwnerParentClass(c))) {
                 matchCount++;
             }
         }
@@ -52,8 +54,8 @@ public class TypeHelper {
     }
 
     private static FieldProperties getSameType(MethodCallInfo callInfo, Set<FieldProperties> availableTypes) {
-        FieldProperties fp = getSameType(callInfo, availableTypes, TypeCategory.CLASS);
-        return fp != null ? fp : getSameType(callInfo, availableTypes, TypeCategory.INTERFACE);
+        FieldProperties fp = getSameType(callInfo, availableTypes, CLASS);
+        return fp != null ? fp : getSameType(callInfo, availableTypes, INTERFACE);
     }
 
     private static FieldProperties getSameType(MethodCallInfo callInfo, Set<FieldProperties> availableTypes, TypeCategory typeCategory) {
