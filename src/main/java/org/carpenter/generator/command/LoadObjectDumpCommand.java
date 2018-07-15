@@ -58,7 +58,13 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
 
             if(byteReaded != length) throw new DeserializationException("Can't deserialize object dump " + filename);
 
-            MethodCallTraceInfo callTraceInfo = SerializationUtils.deserialize(data);
+            MethodCallTraceInfo callTraceInfo;
+            try {
+                callTraceInfo = SerializationUtils.deserialize(data);
+            } catch (Exception ioex) {
+                System.err.println("WARNING!!! Can't deserialize file" + filename + ". " + ioex.getMessage());
+                continue;
+            }
 
             Set<MethodCallTraceInfo> methodSet = commonDataMap.get(callTraceInfo.getKey());
             if (methodSet == null) {
