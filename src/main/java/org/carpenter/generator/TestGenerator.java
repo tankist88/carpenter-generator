@@ -9,7 +9,7 @@ import org.carpenter.generator.service.LoadDataService;
 import java.lang.reflect.Modifier;
 
 import static org.carpenter.generator.util.GenerateUtil.allowedPackage;
-import static org.object2source.util.GenerationUtil.getLastClassShort;
+import static org.object2source.util.GenerationUtil.isAnonymousClass;
 
 public class TestGenerator {
     public static final String GENERATED_TEST_CLASS_POSTFIX = "GeneratedTest";
@@ -31,14 +31,15 @@ public class TestGenerator {
         boolean deniedModifier = Modifier.isPrivate(callInfo.getMethodModifiers());
         boolean deniedDeclarationPlace = !callInfo.getClassName().equals(callInfo.getDeclaringTypeName());
         boolean deniedClassType = callInfo.isMemberClass() && !Modifier.isStatic(callInfo.getClassModifiers());
-        boolean anonymousClass = getLastClassShort(callInfo.getClassName()).matches("\\d+");
-        return !allowedPackage(callInfo.getClassName(), props) || deniedModifier || deniedClassType || deniedDeclarationPlace || anonymousClass;
+        boolean anonymousClass = isAnonymousClass(callInfo.getClassName());
+        boolean hasZeroArgConstructor = callInfo.isClassHasZeroArgConstructor();
+        return !allowedPackage(callInfo.getClassName(), props) || deniedModifier || deniedClassType || deniedDeclarationPlace || anonymousClass || !hasZeroArgConstructor;
     }
 
     private int generate() {
         TestBuilder testBuilder = new TestBuilder();
         testBuilder.appendPreviousGenerated();
-        for(MethodCallInfo callInfo : loadDataService.loadObjectDump()) {
+        for (MethodCallInfo callInfo : loadDataService.loadObjectDump()) {
             if(skipTestMethod(callInfo)) continue;
             testBuilder.appendMockTestField(callInfo);
             testBuilder.appendMockField(callInfo);
