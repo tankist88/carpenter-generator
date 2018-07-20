@@ -46,7 +46,7 @@ public class TypeHelper {
             extendedServices.addAll(serviceClass.getInterfacesHierarchy());
         }
         for (String c : classesAndInterfaces) {
-            if (extendedServices.contains(getOwnerParentClass(c))) {
+            if (extendedServices.contains(isAnonymousClass(c) ? getAnonymousCallerClass(c) : c)) {
                 matchCount++;
             }
         }

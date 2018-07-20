@@ -271,15 +271,17 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 imports.add(createImportInfo(retType, callInfo.getClassName()));
             }
 
+            String retShortType = getClassShort(retType);
+            String arrVarName = "values" + retShortType;
             StringBuilder mockBuilder = new StringBuilder();
             mockBuilder.append(TAB + TAB + "doAnswer(new Answer() {\n" + TAB + "\n")
                     .append(TAB + TAB + TAB + "private int count = 0;\n" + TAB + "\n")
                     .append(TAB + TAB + TAB + "private ")
-                    .append(getClassShort(retType)).append("[] values = ").append(createArrayProvider(innerSet)).append(";\n")
+                    .append(retShortType).append("[] ").append(arrVarName).append(" = ").append(createArrayProvider(innerSet)).append(";\n")
                     .append(TAB + TAB + TAB + "@Override\n")
                     .append(TAB + TAB + TAB + "public Object answer(InvocationOnMock invocationOnMock) throws Throwable {\n")
-                    .append(TAB + TAB + TAB + TAB).append(getClassShort(retType)).append(" result = values[count];\n")
-                    .append(TAB + TAB + TAB + TAB + "if (count + 1 < values.length)\n")
+                    .append(TAB + TAB + TAB + TAB).append(retShortType).append(" result = ").append(arrVarName).append("[count];\n")
+                    .append(TAB + TAB + TAB + TAB + "if (count + 1 < ").append(arrVarName).append(".length)\n")
                     .append(TAB + TAB + TAB + TAB + TAB + "count++;\n")
                     .append(TAB + TAB + TAB + TAB + "return result;\n")
                     .append(TAB + TAB + TAB + "}\n")
@@ -349,12 +351,6 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 sb.append("ArgumentMatchers.<").append(getLastClassShort(arg.getGenericString())).append(">anySet()");
                 if(!isPrimitive(arg.getGenericString()) && !isWrapper(arg.getGenericString()) && !arg.getGenericString().equals(String.class.getName())) {
                     imports.add(createImportInfo(arg.getGenericString(), callInfo.getClassName()));
-                }
-            } else if (arg.getGenerated() != null) {
-                String clearedType = getClearedClassName(arg.getClassName());
-                sb.append("any(").append(getLastClassShort(clearedType)).append(".class").append(")");
-                if(!isPrimitive(clearedType) && !isWrapper(clearedType) && !clearedType.equals(String.class.getName())) {
-                    imports.add(createImportInfo(clearedType, callInfo.getClassName()));
                 }
             } else {
                 String clearedType = getClearedClassName(arg.getClassName());
