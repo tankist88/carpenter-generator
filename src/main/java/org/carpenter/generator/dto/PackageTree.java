@@ -34,7 +34,16 @@ public class PackageTree {
         if (value.equals(node.getValue())) return node;
         if (node.getChilds().size() == 0) return null;
         for (Node<String> c : node.getChilds()) {
-            Node<String> res = searchNode(value, c);
+            if (value.equals(c.getValue())) return c;
+        }
+        return null;
+    }
+
+    private Node<String> searchNodeRecursive(String value, Node<String> node) {
+        if (value.equals(node.getValue())) return node;
+        if (node.getChilds().size() == 0) return null;
+        for (Node<String> c : node.getChilds()) {
+            Node<String> res = searchNodeRecursive(value, c);
             if (res != null) return res;
         }
         return null;

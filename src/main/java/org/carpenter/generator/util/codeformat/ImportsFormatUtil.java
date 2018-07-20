@@ -23,8 +23,7 @@ public class ImportsFormatUtil {
             tree.addPackage(importInfo.getBody());
         }
         List<String> result = new ArrayList<>();
-//        for (String unit : tree.cutOne()) {
-        for (String unit : tree.toList()) {
+        for (String unit : tree.cutOne()) {
             result.add(unit.replace("\n", "").replace("\r", "") + "\n");
         }
         if (simpleImports.size() > 0) {
