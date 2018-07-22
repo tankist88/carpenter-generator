@@ -2,6 +2,7 @@ package org.carpenter.generator.command;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.*;
 import org.carpenter.core.property.GenerationProperties;
@@ -20,6 +21,7 @@ import static org.carpenter.core.property.AbstractGenerationProperties.COMMON_UT
 import static org.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static org.carpenter.generator.TestGenerator.*;
 import static org.carpenter.generator.util.GenerateUtil.getFileList;
+import static org.carpenter.generator.util.TypeHelper.createImportInfo;
 import static org.object2source.util.GenerationUtil.getClassShort;
 
 public class PopulatePrevMethodsCommand extends AbstractReturnClassInfoCommand<ClassExtInfo> {
@@ -76,6 +78,13 @@ public class PopulatePrevMethodsCommand extends AbstractReturnClassInfoCommand<C
                     units = new HashSet<>();
                     existsMethodsMap.put(fullClassName, units);
                 }
+
+                for (ImportDeclaration imp : compilationUnit.getImports()) {
+                    String name = imp.getName().toString();
+                    String impClass = imp.isAsterisk() ? name + ".*" : name;
+                    units.add(createImportInfo(impClass, fullClassName, imp.isStatic()));
+                }
+
                 for (Node node : type.getChildrenNodes()) {
                     if (node instanceof FieldDeclaration) {
                         FieldExtInfo field = new FieldExtInfo();
