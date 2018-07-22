@@ -48,6 +48,8 @@ public class CreateJavaClassesCommand extends AbstractCommand {
         String pathname = createAndReturnPathName(props);
         String dataProviderClassPattern = props.getDataProviderClassPattern();
         for(String fullClassName : collectedTests.keySet()) {
+            if (!allowedPackageForGeneration(fullClassName)) continue;
+
             String className = getLastClassShort(fullClassName);
             String packageName = getPackage(fullClassName);
             String packageFileStruct = pathname + "/" + packageName.replaceAll("\\.", "/");
@@ -108,5 +110,14 @@ public class CreateJavaClassesCommand extends AbstractCommand {
             units.add(createImportInfo("org.mockito.MockitoAnnotations.initMocks", fullClassName, true));
         }
         units.add(createImportInfo("javax.annotation.Generated", fullClassName));
+    }
+
+    private boolean allowedPackageForGeneration(String className) {
+        if(className == null) return false;
+        String dataProviderClassPattern = props.getDataProviderClassPattern();
+        for (String p : props.getAllowedPackagesForTests()) {
+            if(className.startsWith(p) || className.startsWith(dataProviderClassPattern)) return true;
+        }
+        return false;
     }
 }
