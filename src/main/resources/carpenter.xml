@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <carpenterConfig>
-    <utGenDir>tmp</utGenDir>
+    <utGenDir>C:\Users\lenovo\Idea_Projects\simple-web\src\test\java</utGenDir>
     <objectDumpDir>tmp</objectDumpDir>
     <dataProviderClassPattern>org.example.util.CDP_</dataProviderClassPattern>
     <allowedPackagesForTests>
