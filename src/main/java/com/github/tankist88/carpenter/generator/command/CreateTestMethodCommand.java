@@ -262,7 +262,8 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 mocks.addAll(innerMocks);
             }
         } else {
-            String varName = sameTypeWithTest ? TestGenerator.TEST_INST_VAR_NAME : TypeHelper.determineVarName(innerFirst, serviceClasses);
+            boolean testClass = innerFirst.getClassName().equals(callInfo.getClassName());
+            String varName = testClass ? TestGenerator.TEST_INST_VAR_NAME : TypeHelper.determineVarName(innerFirst, serviceClasses);
 
             String retType = innerFirst.getReturnArg().getClassName();
             if (!isPrimitive(retType) && !isWrapper(retType) && !retType.equals(String.class.getName())) {
@@ -313,7 +314,8 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 mocks.addAll(innerMocks);
             }
         } else {
-            String varName = sameTypeWithTest ? TestGenerator.TEST_INST_VAR_NAME : TypeHelper.determineVarName(inner, serviceClasses);
+            boolean testClass = inner.getClassName().equals(callInfo.getClassName());
+            String varName = testClass ? TestGenerator.TEST_INST_VAR_NAME : TypeHelper.determineVarName(inner, serviceClasses);
             StringBuilder mockBuilder = new StringBuilder();
             StringBuilder verifyBuilder = new StringBuilder();
             verifyBuilder.append(TAB + TAB + "verify(");
@@ -351,7 +353,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                     imports.add(TypeHelper.createImportInfo(arg.getGenericString(), callInfo.getClassName()));
                 }
             } else {
-                String clearedType = getClearedClassName(arg.getClassName());
+                String clearedType = getClearedClassName(arg.getNearestInstantAbleClass());
                 sb.append("nullable(").append(getLastClassShort(clearedType)).append(".class").append(")");
                 if(!isPrimitive(clearedType) && !isWrapper(clearedType) && !clearedType.equals(String.class.getName())) {
                     imports.add(TypeHelper.createImportInfo(clearedType, callInfo.getClassName()));
