@@ -108,6 +108,8 @@ public class TypeHelper {
     }
 
     public static boolean simpleType(GeneratedArgument arg) {
-        return typeOfGenArg(arg) != null && isPrimitive(typeOfGenArg(arg)) || isWrapper(typeOfGenArg(arg)) || typeOfGenArg(arg).equals(String.class.getName());
+        if (arg == null) return false;
+        String type = arg.getNearestInstantAbleClass();
+        return isPrimitive(type) || isWrapper(type) || type.equals(String.class.getName());
     }
 }

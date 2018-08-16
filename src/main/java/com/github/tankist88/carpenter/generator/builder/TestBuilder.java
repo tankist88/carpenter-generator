@@ -6,10 +6,7 @@ import com.github.tankist88.carpenter.core.property.GenerationPropertiesFactory;
 import com.github.tankist88.carpenter.generator.command.*;
 import com.github.tankist88.carpenter.generator.dto.unit.ClassExtInfo;
 import com.github.tankist88.carpenter.generator.dto.unit.method.MethodExtInfo;
-import com.github.tankist88.carpenter.generator.extension.assertext.AssertExtension;
-import com.github.tankist88.carpenter.generator.extension.assertext.CalendarAssertExtension;
-import com.github.tankist88.carpenter.generator.extension.assertext.DateAssertExtension;
-import com.github.tankist88.carpenter.generator.extension.assertext.SimpleAssertExtension;
+import com.github.tankist88.carpenter.generator.extension.assertext.*;
 
 import java.util.*;
 
@@ -42,6 +39,7 @@ public class TestBuilder {
         registerExtension(new SimpleAssertExtension());
         registerExtension(new CalendarAssertExtension());
         registerExtension(new DateAssertExtension());
+        registerExtension(new SimpleArrayListAssertExtension());
     }
 
     private void initAssertExtensionsFromClassPath() {
