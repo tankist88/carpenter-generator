@@ -43,12 +43,7 @@
         <dependency>
             <groupId>com.github.tankist88</groupId>
             <artifactId>carpenter-core</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.tankist88</groupId>
-            <artifactId>object2source</artifactId>
-            <version>0.0.1</version>
+            <version>0.0.2</version>
         </dependency>
         <dependency>
             <groupId>commons-io</groupId>
