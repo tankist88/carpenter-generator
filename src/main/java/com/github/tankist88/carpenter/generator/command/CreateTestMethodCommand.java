@@ -106,14 +106,19 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
         List<PreparedMock> mocks = createMocks(callInfo, serviceClasses, testClassHierarchy);
 
+        appendInitMethod();
         appendMocks(mocks);
-        appendTestCall(callInfo);
+        appendTestCall();
         appendMethodCallVerification(mocks);
-        appendResultCheckAssert(callInfo);
+        appendResultCheckAssert();
 
         builder.append(TAB + "}\n");
 
         methods = singletonList(new MethodExtInfo(callInfo.getClassName(), testMethodName, builder.toString()));
+    }
+
+    private void appendInitMethod() {
+        // TODO Implement init method from com.github.tankist88.carpenter.core.dto.unit.method.MethodCallInfo.targetObj
     }
 
     private AssertExtension findAssertExtension(MethodCallInfo callInfo) {
@@ -127,7 +132,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         return assertExtension;
     }
 
-    private void appendResultCheckAssert(MethodCallInfo callInfo) {
+    private void appendResultCheckAssert() {
         AssertExtension assertExtension = findAssertExtension(callInfo);
         if (assertExtension != null) {
             String varName = "control";
@@ -156,7 +161,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         return TAB + TAB + getLastClassShort(TypeHelper.typeOfGenArg(generatedArgument)) + " " + varName + " = " + createDataProvider(generatedArgument) + ";\n";
     }
 
-    private void appendTestCall(MethodCallInfo callInfo) {
+    private void appendTestCall() {
         int i = 0;
         StringBuilder argBuilder = new StringBuilder();
         StringBuilder providerBuilder = new StringBuilder();
