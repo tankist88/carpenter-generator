@@ -24,6 +24,9 @@ import java.util.*;
 
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.COMMON_UTIL_POSTFIX;
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.TAB;
+import static com.github.tankist88.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
+import static com.github.tankist88.carpenter.generator.util.ConvertUtil.toMethodExtInfo;
+import static com.github.tankist88.object2source.util.AssigmentUtil.VAR_NAME_PLACEHOLDER;
 import static com.github.tankist88.object2source.util.GenerationUtil.*;
 import static java.util.Collections.singletonList;
 
@@ -91,7 +94,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 HASH_CODE_SEPARATOR + callInfo.getArguments().hashCode() + "()"
                 ).replaceAll("-", "_");
 
-        FieldProperties testProp = new FieldProperties(callInfo.getClassName(), TestGenerator.TEST_INST_VAR_NAME);
+        FieldProperties testProp = new FieldProperties(callInfo.getClassName(), TEST_INST_VAR_NAME);
         testProp.setClassHierarchy(callInfo.getClassHierarchy());
         testProp.setInterfacesHierarchy(callInfo.getInterfacesHierarchy());
 
@@ -118,7 +121,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     }
 
     private void appendInitMethod() {
-        // TODO Implement init method from com.github.tankist88.carpenter.core.dto.unit.method.MethodCallInfo.targetObj
+        builder.append(TAB + TAB).append(createDataProvider(callInfo.getTargetObj()));
     }
 
     private AssertExtension findAssertExtension(MethodCallInfo callInfo) {
@@ -185,7 +188,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         if(Modifier.isStatic(callInfo.getMethodModifiers())) {
             builder.append(getClassShort(callInfo.getClassName())).append(".");
         } else {
-            builder.append(TestGenerator.TEST_INST_VAR_NAME + ".");
+            builder.append(TEST_INST_VAR_NAME + ".");
         }
         builder.append(callInfo.getUnitName()).append("(").append(argBuilder.toString()).append(");\n");
     }
@@ -268,7 +271,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             }
         } else {
             boolean testClass = innerFirst.getClassName().equals(callInfo.getClassName());
-            String varName = testClass ? TestGenerator.TEST_INST_VAR_NAME : TypeHelper.determineVarName(innerFirst, serviceClasses);
+            String varName = testClass ? TEST_INST_VAR_NAME : TypeHelper.determineVarName(innerFirst, serviceClasses);
 
             String retType = innerFirst.getReturnArg().getClassName();
             if (!isPrimitive(retType) && !isWrapper(retType) && !retType.equals(String.class.getName())) {
@@ -320,7 +323,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             }
         } else {
             boolean testClass = inner.getClassName().equals(callInfo.getClassName());
-            String varName = testClass ? TestGenerator.TEST_INST_VAR_NAME : TypeHelper.determineVarName(inner, serviceClasses);
+            String varName = testClass ? TEST_INST_VAR_NAME : TypeHelper.determineVarName(inner, serviceClasses);
             StringBuilder mockBuilder = new StringBuilder();
             StringBuilder verifyBuilder = new StringBuilder();
             verifyBuilder.append(TAB + TAB + "verify(");
@@ -438,9 +441,10 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     }
 
     private MethodBaseInfo getProviderNameAndUpdateState(ProviderResult providerResult) {
-        String existsClassName = getExistsProviderClassName(providerResult.getEndPoint().getMethodName());
+        String methodName = providerResult.getEndPoint().getMethodName().replace(VAR_NAME_PLACEHOLDER, TEST_INST_VAR_NAME);
+        String existsClassName = getExistsProviderClassName(methodName);
         if(existsClassName != null) {
-            return new MethodBaseInfo(existsClassName, providerResult.getEndPoint().getMethodName());
+            return new MethodBaseInfo(existsClassName, methodName);
         } else {
             ProviderNextPartInfo dataProviderInfo = getNextProviderClassName();
             Set<String> methodsSig = this.providerSignatureMap.get(dataProviderInfo.getClassName());
@@ -449,12 +453,13 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 this.providerSignatureMap.put(dataProviderInfo.getClassName(), methodsSig);
             }
             for (ProviderInfo provider : providerResult.getProviders()) {
-                if (!methodsSig.contains(provider.getMethodName())) {
-                    dataProviderInfo.getMethods().add(ConvertUtil.toMethodExtInfo(dataProviderInfo.getClassName(), provider));
-                    methodsSig.add(provider.getMethodName());
+                String currProviderName = provider.getMethodName().replace(VAR_NAME_PLACEHOLDER, TEST_INST_VAR_NAME);
+                if (!methodsSig.contains(currProviderName)) {
+                    dataProviderInfo.getMethods().add(toMethodExtInfo(dataProviderInfo.getClassName(), provider));
+                    methodsSig.add(currProviderName);
                 }
             }
-            return new MethodBaseInfo(dataProviderInfo.getClassName(), providerResult.getEndPoint().getMethodName());
+            return new MethodBaseInfo(dataProviderInfo.getClassName(), methodName);
         }
     }
 
