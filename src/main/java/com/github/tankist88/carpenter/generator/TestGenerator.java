@@ -2,12 +2,12 @@ package com.github.tankist88.carpenter.generator;
 
 import com.github.tankist88.carpenter.core.dto.unit.method.MethodCallInfo;
 import com.github.tankist88.carpenter.core.property.GenerationProperties;
-import com.github.tankist88.carpenter.core.property.GenerationPropertiesFactory;
 import com.github.tankist88.carpenter.generator.builder.TestBuilder;
 import com.github.tankist88.carpenter.generator.service.LoadDataService;
 
 import java.lang.reflect.Modifier;
 
+import static com.github.tankist88.carpenter.core.property.GenerationPropertiesFactory.loadProps;
 import static com.github.tankist88.carpenter.generator.util.GenerateUtil.allowedPackage;
 import static com.github.tankist88.object2source.util.GenerationUtil.isAnonymousClass;
 
@@ -19,7 +19,7 @@ public class TestGenerator {
     private LoadDataService loadDataService;
 
     private TestGenerator() {
-        this.props = GenerationPropertiesFactory.loadProps();
+        this.props = loadProps();
         this.loadDataService = new LoadDataService();
     }
 
@@ -57,7 +57,7 @@ public class TestGenerator {
     public static void main(String args[]) {
         int generatedTests = (new TestGenerator()).generate();
         System.out.println("Generated tests count: " + generatedTests);
-        System.out.println("Object dumps folder: " + GenerationPropertiesFactory.loadProps().getObjectDumpDir());
-        System.out.println("Destination folder: " + GenerationPropertiesFactory.loadProps().getUtGenDir());
+        System.out.println("Object dumps folder: " + loadProps().getObjectDumpDir());
+        System.out.println("Destination folder: " + loadProps().getUtGenDir());
     }
 }

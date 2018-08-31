@@ -129,7 +129,8 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     }
 
     private void appendInitMethod() {
-        if (callInfo.getTargetObj() != null && callInfo.getTargetObj().getGenerated() != null) {
+        GeneratedArgument arg = callInfo.getTargetObj();
+        if (arg != null && arg.getGenerated() != null && !arg.getGenerated().getEndPoint().isEmpty()) {
             builder.append(TAB + TAB).append(createDataProvider(callInfo.getTargetObj())).append(";\n");
         }
     }
@@ -393,7 +394,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             }
         } else {
             String dpType = arg.getNearestInstantAbleClass();
-            result = "(" + getLastClassShort(dpType) + ") null";
+            result = "(" + getLastClassShort(convertPrimitiveToWrapper(dpType)) + ") null";
             if(!isPrimitive(dpType) && !isWrapper(dpType) && !dpType.equals(String.class.getName())) {
                 imports.add(createImportInfo(dpType, callInfo.getClassName()));
             }
