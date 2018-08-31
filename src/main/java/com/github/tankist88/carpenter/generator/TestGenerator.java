@@ -32,8 +32,13 @@ public class TestGenerator {
         boolean deniedDeclarationPlace = !callInfo.getClassName().equals(callInfo.getDeclaringTypeName());
         boolean deniedClassType = callInfo.isMemberClass() && !Modifier.isStatic(callInfo.getClassModifiers());
         boolean anonymousClass = isAnonymousClass(callInfo.getClassName());
-        boolean hasZeroArgConstructor = callInfo.isClassHasZeroArgConstructor();
-        return !allowedPackage(callInfo.getClassName(), props) || deniedModifier || deniedClassType || deniedDeclarationPlace || anonymousClass || !hasZeroArgConstructor;
+        boolean skipNoZeroArgConst = !callInfo.isClassHasZeroArgConstructor() && !props.isNoZeroArgConstructorTestAllowed();
+        return  !allowedPackage(callInfo.getClassName(), props) ||
+                deniedModifier ||
+                deniedClassType ||
+                deniedDeclarationPlace ||
+                anonymousClass ||
+                skipNoZeroArgConst;
     }
 
     private int generate() {
@@ -52,5 +57,7 @@ public class TestGenerator {
     public static void main(String args[]) {
         int generatedTests = (new TestGenerator()).generate();
         System.out.println("Generated tests count: " + generatedTests);
+        System.out.println("Object dumps folder: " + GenerationPropertiesFactory.loadProps().getObjectDumpDir());
+        System.out.println("Destination folder: " + GenerationPropertiesFactory.loadProps().getUtGenDir());
     }
 }

@@ -1,11 +1,10 @@
 package com.github.tankist88.carpenter.generator.extension.assertext;
 
 import com.github.tankist88.carpenter.core.dto.argument.GeneratedArgument;
+import com.github.tankist88.carpenter.generator.extension.assertext.builder.AssertBuilder;
 
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-
-import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.TAB;
 
 public class CalendarAssertExtension implements AssertExtension {
     @Override
@@ -14,11 +13,12 @@ public class CalendarAssertExtension implements AssertExtension {
     }
 
     @Override
-    public String getAssertBlock(String dataProviderMethod) {
-        return  TAB + TAB + "assertEquals(result.getTimeInMillis(), " + dataProviderMethod + ".getTimeInMillis());\n" +
-                TAB + TAB + "if (result.getTimeZone() != null) {\n" +
-                TAB + TAB + TAB + "assertEquals(result.getTimeZone().getID(), " + dataProviderMethod + ".getTimeZone().getID());\n" +
-                TAB + TAB + "}\n";
+    public String getAssertBlock(String actual, String expected) {
+        return new AssertBuilder(actual, expected)
+                .tab().tab().assertEqualsBy("getTimeInMillis()")
+                .tab().tab().ifNotNullFor("getTimeZone()").then()
+                .tab().tab().tab().assertEqualsBy("getTimeZone().getID()")
+                .tab().tab().endIf().toString();
     }
 
     private boolean isCalendarObject(GeneratedArgument returnValue) {
