@@ -1,8 +1,7 @@
 package com.github.tankist88.carpenter.generator.extension.assertext;
 
 import com.github.tankist88.carpenter.core.dto.argument.GeneratedArgument;
-
-import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.TAB;
+import com.github.tankist88.carpenter.generator.extension.assertext.builder.AssertBuilder;
 
 public class DateAssertExtension implements AssertExtension {
     @Override
@@ -11,8 +10,9 @@ public class DateAssertExtension implements AssertExtension {
     }
 
     @Override
-    public String getAssertBlock(String dataProviderMethod) {
-        return TAB + TAB + "assertEquals(result.getTime(), " + dataProviderMethod + ".getTime());\n";
+    public String getAssertBlock(String actual, String expected) {
+        return new AssertBuilder(actual, expected)
+                .tab().tab().assertEqualsBy("getTime()").toString();
     }
 
     private boolean isDateObject(GeneratedArgument returnValue) {

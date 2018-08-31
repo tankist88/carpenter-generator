@@ -1,21 +1,22 @@
 package com.github.tankist88.carpenter.generator.extension.assertext;
 
 import com.github.tankist88.carpenter.core.dto.argument.GeneratedArgument;
-import com.github.tankist88.carpenter.generator.util.TypeHelper;
+import com.github.tankist88.carpenter.generator.extension.assertext.builder.AssertBuilder;
 
 import java.util.GregorianCalendar;
 
-import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.TAB;
+import static com.github.tankist88.carpenter.generator.util.TypeHelper.simpleType;
 
 public class SimpleAssertExtension implements AssertExtension {
     @Override
     public boolean isTypeSupported(GeneratedArgument returnValue) {
-        return TypeHelper.simpleType(returnValue) || isDateObject(returnValue);
+        return simpleType(returnValue) || isDateObject(returnValue);
     }
 
     @Override
-    public String getAssertBlock(String dataProviderMethod) {
-        return TAB + TAB + "assertEquals(result, " + dataProviderMethod + ");\n";
+    public String getAssertBlock(String actual, String expected) {
+        return new AssertBuilder(actual, expected)
+                .tab().tab().assertEquals().toString();
     }
 
     private boolean isDateObject(GeneratedArgument returnValue) {

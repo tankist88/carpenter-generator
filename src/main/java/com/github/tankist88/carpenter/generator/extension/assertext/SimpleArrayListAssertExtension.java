@@ -1,11 +1,12 @@
 package com.github.tankist88.carpenter.generator.extension.assertext;
 
 import com.github.tankist88.carpenter.core.dto.argument.GeneratedArgument;
+import com.github.tankist88.carpenter.generator.extension.assertext.builder.AssertBuilder;
 import com.github.tankist88.object2source.dto.ProviderResult;
 
 import java.util.List;
 
-import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.TAB;
+import static com.github.tankist88.object2source.util.GenerationUtil.DATA_PROVIDER_METHOD_START;
 
 public class SimpleArrayListAssertExtension implements AssertExtension {
     @Override
@@ -13,16 +14,13 @@ public class SimpleArrayListAssertExtension implements AssertExtension {
         String type = returnValue.getNearestInstantAbleClass();
         if (!type.equals(List.class.getName())) return false;
         ProviderResult pr = returnValue.getGenerated();
-        return pr != null && pr.getEndPoint().getMethodBody().contains(".add(") && !pr.getEndPoint().getMethodBody().contains(".add(get");
+        return  pr != null &&
+                pr.getEndPoint().getMethodBody().contains(".add(") &&
+                !pr.getEndPoint().getMethodBody().contains(".add(" + DATA_PROVIDER_METHOD_START);
     }
 
     @Override
-    public String getAssertBlock(String dataProviderMethod) {
-        return
-                TAB + TAB + "assertEquals(result.size(), " + dataProviderMethod + ".size());\n" +
-                TAB + TAB + "Iterator iterator = result.iterator();\n" +
-                TAB + TAB + "while (iterator.hasNext()) {\n" +
-                TAB + TAB + TAB + "assertTrue(" + dataProviderMethod +".contains(iterator.next()));\n" +
-                TAB + TAB + "}\n";
+    public String getAssertBlock(String actual, String expected) {
+        return new AssertBuilder(actual, expected).assertEqualsList().toString();
     }
 }
