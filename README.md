@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/tankist88/carpenter-generator.svg?branch=master)](https://travis-ci.org/tankist88/carpenter-generator)
 [![Codecov](https://img.shields.io/codecov/c/github/tankist88/carpenter-generator.svg)](https://codecov.io/gh/tankist88/carpenter-generator)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/738e5781107b45d98ef078ae2f88c312)](https://www.codacy.com/project/tankist88/carpenter-generator/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=tankist88/carpenter-generator&amp;utm_campaign=Badge_Grade_Dashboard)
-[![Maven Central](https://img.shields.io/maven-central/v/com.github.tankist88/carpenter-collector.svg)](http://search.maven.org/classic/#search%7Cga%7C1%7Cg%3A%22com.github.tankist88%22%20a%3A%22carpenter-generator%22)
+[![Maven Central](https://img.shields.io/maven-central/v/com.github.tankist88/carpenter-generator.svg)](http://search.maven.org/classic/#search%7Cga%7C1%7Cg%3A%22com.github.tankist88%22%20a%3A%22carpenter-generator%22)
 
 Carpenter is a framework for unit test generation from runtime data. It useful for unit test coverage of legacy systems. Also it may be useful for coverage new features.
 

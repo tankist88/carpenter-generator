@@ -160,7 +160,7 @@
                     <finalName>carpenter-generator</finalName>
                     <archive>
                         <manifest>
-                            <mainClass>org.carpenter.generator.TestGenerator</mainClass>
+                            <mainClass>com.github.tankist88.carpenter.generator.TestGenerator</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

@@ -6,7 +6,6 @@ import com.github.tankist88.carpenter.core.exception.CallerNotFoundException;
 import com.github.tankist88.carpenter.core.property.GenerationProperties;
 import com.github.tankist88.carpenter.core.property.GenerationPropertiesFactory;
 import com.github.tankist88.carpenter.generator.exception.DeserializationException;
-import com.github.tankist88.carpenter.generator.util.GenerateUtil;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.io.DataInputStream;
@@ -15,6 +14,7 @@ import java.io.FileInputStream;
 import java.util.*;
 
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.OBJ_FILE_EXTENSION;
+import static com.github.tankist88.carpenter.generator.util.GenerateUtil.getFileList;
 
 public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<MethodCallInfo> {
 
@@ -42,27 +42,31 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
         return objectDataList;
     }
 
-    private List<MethodCallInfo> loadObjectData() throws CallerNotFoundException {
+    private List<MethodCallInfo> loadObjectData() throws CallerNotFoundException, DeserializationException {
         List<MethodCallInfo> result = new ArrayList<>();
 
         Map<String, Set<MethodCallTraceInfo>> commonDataMap = new HashMap<>();
 
-        for (File objDump : GenerateUtil.getFileList(new File(props.getObjectDumpDir()), OBJ_FILE_EXTENSION)) {
+        for (File objDump : getFileList(new File(props.getObjectDumpDir()), OBJ_FILE_EXTENSION)) {
             String filename = objDump.getName();
             MethodCallTraceInfo callTraceInfo;
             try {
                 DataInputStream dis = new DataInputStream(new FileInputStream(objDump));
+                if (dis.available() <= 0) {
+                    System.out.println("WARNING! Empty file " + filename + ".");
+                    continue;
+                }
                 int length = dis.readInt();
                 byte[] data = new byte[length];
                 int byteReaded = dis.read(data);
                 dis.close();
-                if(byteReaded != length) throw new DeserializationException("Can't deserialize object dump " + filename);
+                if (byteReaded != length) {
+                    throw new DeserializationException("Can't deserialize object dump " + filename);
+                }
                 callTraceInfo = SerializationUtils.deserialize(data);
-            } catch (Exception ioex) {
-                System.err.println("WARNING!!! Can't deserialize file " + filename + ". " + ioex.getMessage());
-                continue;
+            } catch (Exception ex) {
+                throw new DeserializationException(ex.getMessage(), ex);
             }
-
             Set<MethodCallTraceInfo> methodSet = commonDataMap.get(callTraceInfo.getKey());
             if (methodSet == null) {
                 methodSet = new HashSet<>();
@@ -73,7 +77,9 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
         for (Set<MethodCallTraceInfo> values : commonDataMap.values()) {
             for (MethodCallTraceInfo value : values) {
                 String upLevelKey = value.getTraceAnalyzeData().getUpLevelElementKey();
-                if (upLevelKey == null) throw new CallerNotFoundException("FATAL ERROR. Can't determine caller for " + value);
+                if (upLevelKey == null) {
+                    throw new CallerNotFoundException("FATAL ERROR!!! Can't determine caller for " + value);
+                }
                 Set<MethodCallTraceInfo> callers = commonDataMap.get(upLevelKey);
                 if (callers != null) {
                     for (MethodCallTraceInfo m : callers) {
@@ -82,7 +88,7 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
                 }
             }
         }
-        for(Set<MethodCallTraceInfo> values : commonDataMap.values()) {
+        for (Set<MethodCallTraceInfo> values : commonDataMap.values()) {
             result.addAll(values);
         }
         return result;
