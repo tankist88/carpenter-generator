@@ -4,27 +4,27 @@ import com.github.tankist88.carpenter.core.dto.unit.field.FieldProperties;
 import com.github.tankist88.carpenter.core.dto.unit.method.MethodCallInfo;
 import com.github.tankist88.carpenter.core.property.GenerationProperties;
 import com.github.tankist88.carpenter.core.property.GenerationPropertiesFactory;
-import com.github.tankist88.carpenter.generator.TestGenerator;
 import com.github.tankist88.carpenter.generator.dto.unit.field.FieldExtInfo;
 import com.github.tankist88.carpenter.generator.enums.TestFieldCategory;
-import org.apache.commons.lang3.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.lang.reflect.Modifier;
+import java.util.*;
 
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.COMMON_UTIL_POSTFIX;
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.TAB;
+import static com.github.tankist88.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
+import static com.github.tankist88.carpenter.generator.enums.TestFieldCategory.MOCK_FIELD;
+import static com.github.tankist88.carpenter.generator.enums.TestFieldCategory.TEST_CLASS;
+import static com.github.tankist88.carpenter.generator.util.GenerateUtil.createVarNameFromMethod;
 import static com.github.tankist88.object2source.util.GenerationUtil.getClassShort;
 import static com.github.tankist88.object2source.util.GenerationUtil.getClearedClassName;
+import static org.apache.commons.lang3.StringUtils.isNoneBlank;
 
 public class CreateMockFieldCommand extends AbstractReturnClassInfoCommand<FieldExtInfo> {
 
     private TestFieldCategory fieldCategory;
     private MethodCallInfo callInfo;
-
     private List<FieldExtInfo> fieldList;
-
     private GenerationProperties props;
 
     public CreateMockFieldCommand(TestFieldCategory fieldCategory, MethodCallInfo callInfo) {
@@ -45,27 +45,43 @@ public class CreateMockFieldCommand extends AbstractReturnClassInfoCommand<Field
     }
 
     private void createMockField() {
-        if (TestFieldCategory.TEST_CLASS.equals(fieldCategory)) {
+        if (TEST_CLASS.equals(fieldCategory)) {
             fieldList = Collections.singletonList(mockFieldDeclaration());
-        } else if (TestFieldCategory.MOCK_FIELD.equals(fieldCategory)) {
+        } else if (MOCK_FIELD.equals(fieldCategory)) {
             fieldList = new ArrayList<>();
-            for(FieldProperties f : callInfo.getServiceFields()) {
+            for (FieldProperties f : callInfo.getServiceFields()) {
                 fieldList.add(mockFieldDeclaration(f));
             }
+            Set<FieldExtInfo> innerFieldsSet = new HashSet<>();
+            for (MethodCallInfo inner : callInfo.getInnerMethods()) {
+                boolean staticMethod = Modifier.isStatic(inner.getMethodModifiers());
+                if (!staticMethod && inner.isMaybeServiceClass()) {
+                    innerFieldsSet.add(mockFieldDeclaration(
+                            inner.getNearestInstantAbleClass(),
+                            inner.getGenericString(),
+                            createVarNameFromMethod(inner.getUnitName())
+                    ));
+                }
+            }
+            fieldList.addAll(innerFieldsSet);
         }
     }
 
     FieldExtInfo mockFieldDeclaration() {
-        return mockFieldDeclaration(callInfo.getClassName(), TestGenerator.TEST_INST_VAR_NAME, true);
+        return mockFieldDeclaration(callInfo.getClassName(), TEST_INST_VAR_NAME, true);
     }
 
     FieldExtInfo mockFieldDeclaration(FieldProperties field) {
+        return mockFieldDeclaration(field.getClassName(), field.getGenericString(), field.getUnitName());
+    }
+
+    private FieldExtInfo mockFieldDeclaration(String classname, String genericStr, String varName) {
         StringBuilder typeNameBuilder = new StringBuilder();
-        typeNameBuilder.append(field.getClassName());
-        if(StringUtils.isNoneBlank(field.getGenericString())) {
-            typeNameBuilder.append("<").append(field.getGenericString()).append(">");
+        typeNameBuilder.append(classname);
+        if (isNoneBlank(genericStr)) {
+            typeNameBuilder.append("<").append(genericStr).append(">");
         }
-        return mockFieldDeclaration(typeNameBuilder.toString(), field.getUnitName(), false);
+        return mockFieldDeclaration(typeNameBuilder.toString(), varName, false);
     }
 
     private FieldExtInfo mockFieldDeclaration(String fieldType, String varName, boolean testClass) {

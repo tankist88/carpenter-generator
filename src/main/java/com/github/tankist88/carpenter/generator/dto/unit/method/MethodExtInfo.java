@@ -126,7 +126,14 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
                         }
                         String type = typeStr.replace(" ", "");
                         String name = lineWithoutSpaces.substring(lineWithoutSpaces.indexOf(type) + type.length(), lineWithoutSpaces.indexOf("="));
-                        methodLine.getVariables().add(new Variable(i, text, type, name));
+                        String value;
+                        // FIXME !!! Hard code !!!
+                        if (lineWithoutSpaces.contains("spy(")) {
+                            value = lineWithoutSpaces.substring(lineWithoutSpaces.indexOf("=") + 1);
+                        } else {
+                            value = text;
+                        }
+                        methodLine.getVariables().add(new Variable(i, value, type, name));
                     } else {
                         methodLine.getVariables().add(new Variable(i, text));
                     }

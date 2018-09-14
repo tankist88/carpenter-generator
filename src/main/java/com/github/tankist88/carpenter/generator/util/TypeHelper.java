@@ -17,7 +17,7 @@ public class TypeHelper {
             serviceMap.put(f, f.getUnitName());
         }
         FieldProperties sc = TypeHelper.getSameType(callInfo, serviceMap.keySet());
-        return sc != null ? serviceMap.get(sc) : getInstName(callInfo.getClassName());
+        return sc != null ? serviceMap.get(sc) : null;
     }
 
     public static boolean isSameTypes(MethodCallInfo callInfo, Set<FieldProperties> availableTypes) {
@@ -89,11 +89,15 @@ public class TypeHelper {
     public static ImportInfo createImportInfo(String importClass, String ownerClass, boolean isStatic) {
         ImportInfo importInfo = new ImportInfo();
         importInfo.setClassName(ownerClass);
-        importInfo.setUnitName(importClass);
-        if (isStatic) {
-            importInfo.setBody("import static " + getClearedClassName(importClass) + ";\n");
+        if (!isStatic && !getClassShort(importClass).equals(getLastClassShort(importClass))) {
+            importInfo.setUnitName(importClass.substring(0, importClass.indexOf(getLastClassShort(importClass)) - 1));
         } else {
-            importInfo.setBody("import " + getClearedClassName(importClass) + ";\n");
+            importInfo.setUnitName(importClass);
+        }
+        if (isStatic) {
+            importInfo.setBody("import static " + getClearedClassName(importInfo.getUnitName()) + ";\n");
+        } else {
+            importInfo.setBody("import " + getClearedClassName(importInfo.getUnitName()) + ";\n");
         }
         return importInfo;
     }

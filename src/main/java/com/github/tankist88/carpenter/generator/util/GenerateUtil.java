@@ -8,6 +8,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.github.tankist88.object2source.util.GenerationUtil.downFirst;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+
 public class GenerateUtil {
     public static boolean allowedPackage(String classname, GenerationProperties props) {
         for(String p : props.getAllowedPackagesForTests()) {
@@ -40,5 +43,11 @@ public class GenerateUtil {
             throw new IllegalArgumentException(inDir.getName() + " not a directory");
         }
         return result;
+    }
+
+    public static String createVarNameFromMethod(String methodSig) {
+        if (isBlank(methodSig)) return null;
+        String methodName = methodSig.contains("(") ? methodSig.substring(0, methodSig.indexOf("(")) : methodSig;
+        return downFirst(methodName);
     }
 }

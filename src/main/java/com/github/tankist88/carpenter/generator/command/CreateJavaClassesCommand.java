@@ -92,7 +92,7 @@ public class CreateJavaClassesCommand extends AbstractCommand {
             classBuilder.append("}");
 
             File utClass = new File(packageFileStruct + "/" + className + postfix + ".java");
-            write(utClass, classBuilder.toString());
+            write(utClass, classBuilder.toString(), "UTF-8");
         }
     }
 
