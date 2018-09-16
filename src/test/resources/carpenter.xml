@@ -1,21 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <carpenterConfig>
-    <utGenDir>C:\Users\tankist\Idea_Projects\simple-web\src\test\java</utGenDir>
+    <utGenDir>tmp</utGenDir>
     <objectDumpDir>tmp</objectDumpDir>
     <dataProviderClassPattern>org.example.util.CDP_</dataProviderClassPattern>
     <allowedPackagesForTests>
-        <value>org.example.webapp.simpleweb.service</value>
+        <value>org.example.webapp.simpleweb</value>
     </allowedPackagesForTests>
-    <excludedPackagesForTraceCollect>
-        <value>org.example.webapp.simpleweb.servlet</value>
-        <value>org.example.webapp.simpleweb.data</value>
-    </excludedPackagesForTraceCollect>
-    <excludedPackagesForDp>
-        <value>net</value>
-        <value>com</value>
-        <value>sun</value>
-        <value>java.lang.ref</value>
-        <value>java.lang.Class.AnnotationData</value>
-        <value>org.eclipse</value>
-    </excludedPackagesForDp>
+    <fillTestClassInstance>true</fillTestClassInstance>
+    <noZeroArgConstructorTestAllowed>true</noZeroArgConstructorTestAllowed>
 </carpenterConfig>
