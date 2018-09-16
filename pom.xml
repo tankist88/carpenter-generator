@@ -10,7 +10,7 @@
     
     <groupId>com.github.tankist88</groupId>
     <artifactId>carpenter-generator</artifactId>
-    <version>0.0.5-SNAPSHOT</version>
+    <version>0.0.5</version>
     <packaging>jar</packaging>
 
     <name>carpenter-generator</name>
