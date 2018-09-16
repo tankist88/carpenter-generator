@@ -54,8 +54,12 @@ public class TestGenerator {
         return testBuilder.build();
     }
 
+    public static int runGenerator() {
+        return (new TestGenerator()).generate();
+    }
+
     public static void main(String args[]) {
-        int generatedTests = (new TestGenerator()).generate();
+        int generatedTests = runGenerator();
         System.out.println("Generated tests count: " + generatedTests);
         System.out.println("Object dumps folder: " + loadProps().getObjectDumpDir());
         System.out.println("Destination folder: " + loadProps().getUtGenDir());
