@@ -7,7 +7,6 @@ import com.github.tankist88.carpenter.core.property.GenerationPropertiesFactory;
 import com.github.tankist88.carpenter.generator.dto.unit.field.FieldExtInfo;
 import com.github.tankist88.carpenter.generator.enums.TestFieldCategory;
 
-import java.lang.reflect.Modifier;
 import java.util.*;
 
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.COMMON_UTIL_POSTFIX;
@@ -15,7 +14,7 @@ import static com.github.tankist88.carpenter.core.property.AbstractGenerationPro
 import static com.github.tankist88.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
 import static com.github.tankist88.carpenter.generator.enums.TestFieldCategory.MOCK_FIELD;
 import static com.github.tankist88.carpenter.generator.enums.TestFieldCategory.TEST_CLASS;
-import static com.github.tankist88.carpenter.generator.util.GenerateUtil.createVarNameFromMethod;
+import static com.github.tankist88.carpenter.generator.util.GenerateUtil.*;
 import static com.github.tankist88.object2source.util.GenerationUtil.getClassShort;
 import static com.github.tankist88.object2source.util.GenerationUtil.getClearedClassName;
 import static org.apache.commons.lang3.StringUtils.isNoneBlank;
@@ -52,10 +51,16 @@ public class CreateMockFieldCommand extends AbstractReturnClassInfoCommand<Field
             for (FieldProperties f : callInfo.getServiceFields()) {
                 fieldList.add(mockFieldDeclaration(f));
             }
+
+            Set<FieldProperties> testClassHierarchy = createTestClassHierarchy(callInfo);
+            Set<FieldProperties> serviceFields = createServiceFields(callInfo);
+
             Set<FieldExtInfo> innerFieldsSet = new HashSet<>();
             for (MethodCallInfo inner : callInfo.getInnerMethods()) {
-                boolean staticMethod = Modifier.isStatic(inner.getMethodModifiers());
-                if (!staticMethod && inner.isMaybeServiceClass()) {
+                if (skipMock(inner, serviceFields, testClassHierarchy) || forwardMock(inner, testClassHierarchy)) {
+                    continue;
+                }
+                if (inner.isMaybeServiceClass()) {
                     innerFieldsSet.add(mockFieldDeclaration(
                             inner.getNearestInstantAbleClass(),
                             inner.getGenericString(),

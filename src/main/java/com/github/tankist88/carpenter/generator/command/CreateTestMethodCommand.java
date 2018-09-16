@@ -24,7 +24,7 @@ import static com.github.tankist88.carpenter.core.property.AbstractGenerationPro
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static com.github.tankist88.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
 import static com.github.tankist88.carpenter.generator.util.ConvertUtil.toMethodExtInfo;
-import static com.github.tankist88.carpenter.generator.util.GenerateUtil.createVarNameFromMethod;
+import static com.github.tankist88.carpenter.generator.util.GenerateUtil.*;
 import static com.github.tankist88.carpenter.generator.util.TypeHelper.*;
 import static com.github.tankist88.object2source.util.AssigmentUtil.VAR_NAME_PLACEHOLDER;
 import static com.github.tankist88.object2source.util.GenerationUtil.*;
@@ -41,8 +41,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
     private static final String RESULT_VAR = "result";
     private static final String CONTROL_VAR = "control";
-
-    public static final String SPY_VAR_NAME = "spyObj";
+    private static final String SPY_VAR_NAME = "spyObj";
 
     private StringBuilder builder;
 
@@ -78,7 +77,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             this.assertExtensions = new ArrayList<>();
         }
         this.arrayProviders = new HashSet<>();
-        this.testClassHierarchy = new HashSet<>();
+        this.testClassHierarchy = createTestClassHierarchy(callInfo);
     }
 
     @Override
@@ -105,20 +104,10 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 HASH_CODE_SEPARATOR + callInfo.getArguments().hashCode() + "()"
                 ).replaceAll("-", "_");
 
-        FieldProperties testProp = new FieldProperties(callInfo.getClassName(), TEST_INST_VAR_NAME);
-        testProp.setClassHierarchy(callInfo.getClassHierarchy());
-        testProp.setInterfacesHierarchy(callInfo.getInterfacesHierarchy());
-
-        Set<FieldProperties> serviceClasses = new HashSet<>();
-        serviceClasses.add(testProp);
-        serviceClasses.addAll(callInfo.getServiceFields());
-
-        testClassHierarchy.add(testProp);
-
         builder.append(TAB + TEST_ANNOTATION + "\n")
                .append(TAB + "public void ").append(testMethodName).append(" throws Exception {\n");
 
-        List<PreparedMock> mocks = createMocks(callInfo, serviceClasses);
+        List<PreparedMock> mocks = createMocks(callInfo, createServiceFields(callInfo));
 
         if (props.isFillTestClassInstance()) {
             appendInitMethod();
@@ -266,7 +255,12 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         for (MethodCallInfo inner : allMethods) {
             for (MethodCallInfo current : allMethods) {
                 if (inner.getReturnArg() == null || inner.getReturnArg().getGenerated() == null) continue;
-                if (inner.getReturnArg().getClassName().equals(current.getClassName())) {
+                String returnType = inner.getReturnArg().getClassName();
+                if (
+                        inner.getReturnArg().getClassName().equals(current.getClassName()) ||
+                        current.getClassHierarchy().contains(returnType) ||
+                        current.getInterfacesHierarchy().contains(returnType)
+                ) {
                     result.getReturnSpyMap().put(inner, SPY_VAR_NAME + varCounter);
                     result.getTargetSpyMap().put(current, SPY_VAR_NAME + varCounter);
                 }
@@ -274,39 +268,6 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             varCounter++;
         }
         return result;
-    }
-
-    /**
-     * Return true if need skip mock for method in argument, but need create mocks for their inner calls
-     * @param callInfo method call info
-     * @return true if need skip mock for method in argument, but need create mocks for their inner calls
-     */
-    private boolean forwardMock(MethodCallInfo callInfo) {
-        boolean sameTypeWithTest = isSameTypes(callInfo, testClassHierarchy);
-        boolean voidMethod = callInfo.isVoidMethod();
-        boolean privateMethod = Modifier.isPrivate(callInfo.getMethodModifiers());
-        boolean protectedMethod = Modifier.isProtected(callInfo.getMethodModifiers());
-        boolean anonymousClass = getLastClassShort(callInfo.getClassName()).matches("\\d+");
-        return  (voidMethod && sameTypeWithTest) ||
-                privateMethod ||
-                protectedMethod ||
-                anonymousClass;
-    }
-
-    /**
-     * Return true if need skip create mock for method in argument
-     * @param callInfo method call info
-     * @param serviceClasses service fields of test class
-     * @return true if need skip create mock for method in argument
-     */
-    private boolean skipMock(MethodCallInfo callInfo, Set<FieldProperties> serviceClasses) {
-        boolean staticMethod = Modifier.isStatic(callInfo.getMethodModifiers());
-        return  staticMethod ||
-                (
-                    !isSameTypes(callInfo, serviceClasses) &&
-                    !isSameTypes(callInfo, testClassHierarchy) &&
-                    !callInfo.isMaybeServiceClass()
-                );
     }
 
     private String createArrayProvider(Set<MethodCallInfo> innerSet) {
@@ -359,7 +320,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private PreparedMock createMultipleMock(Set<MethodCallInfo> innerSet, Set<FieldProperties> serviceClasses, SpyMaps spyMaps) {
         MethodCallInfo innerFirst = innerSet.iterator().next();
 
-        if (skipMock(innerFirst, serviceClasses) || forwardMock(innerFirst)) return null;
+        if (skipMock(innerFirst, serviceClasses, testClassHierarchy) || forwardMock(innerFirst, testClassHierarchy)) return null;
 
         // TODO Implement using spyMaps.getReturnSpyMap() for spy() return values in array provider
         String varName;
@@ -394,7 +355,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     }
 
     private PreparedMock createSingleMock(MethodCallInfo inner, Set<FieldProperties> serviceClasses, SpyMaps spyMaps) {
-        if (skipMock(inner, serviceClasses) || forwardMock(inner)) return null;
+        if (skipMock(inner, serviceClasses, testClassHierarchy) || forwardMock(inner, testClassHierarchy)) return null;
 
         boolean voidMethod = inner.isVoidMethod();
         StringBuilder mockBuilder = new StringBuilder();
@@ -489,7 +450,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private Map<String, Set<MethodCallInfo>> createSetOfSetInners(Set<MethodCallInfo> inners, Set<FieldProperties> serviceClasses) {
         Map<String, Set<MethodCallInfo>> innerMap = new HashMap<>();
         for(MethodCallInfo inner : inners) {
-            if (skipMock(inner, serviceClasses)) continue;
+            if (skipMock(inner, serviceClasses, testClassHierarchy)) continue;
             for(MethodCallInfo current : inners) {
                 if (createInnerKey(current).equals(createInnerKey(inner))) {
                     Set<MethodCallInfo> innerSet = innerMap.get(createInnerKey(current));
@@ -500,7 +461,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                     innerSet.add(current);
                 }
             }
-            if (forwardMock(inner)) {
+            if (forwardMock(inner, testClassHierarchy)) {
                 Map<String, Set<MethodCallInfo>> recMap = createSetOfSetInners(inner.getInnerMethods(), serviceClasses);
                 for (Map.Entry<String, Set<MethodCallInfo>> entry : recMap.entrySet()) {
                     Set<MethodCallInfo> innerSet = innerMap.get(entry.getKey());

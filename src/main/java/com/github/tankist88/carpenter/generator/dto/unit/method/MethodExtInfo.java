@@ -30,11 +30,6 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
         super(className, validateUnitName(unitName), body);
     }
 
-    public MethodExtInfo(String className, String unitName, String body, int index) {
-        super(className, unitName, body);
-        this.index = index;
-    }
-
     public int getIndex() {
         return index;
     }
