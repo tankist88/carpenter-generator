@@ -14,8 +14,10 @@ import java.util.List;
 import java.util.Set;
 
 import static com.github.tankist88.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
+import static com.github.tankist88.carpenter.generator.util.TypeHelper.determineVarName;
 import static com.github.tankist88.carpenter.generator.util.TypeHelper.isSameTypes;
 import static com.github.tankist88.object2source.util.GenerationUtil.downFirst;
+import static com.github.tankist88.object2source.util.GenerationUtil.getInstName;
 import static com.github.tankist88.object2source.util.GenerationUtil.getLastClassShort;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
@@ -92,6 +94,17 @@ public class GenerateUtil {
                 );
     }
 
+    public static String createMockVarName(MethodCallInfo inner, Set<FieldProperties> serviceClasses) {
+        String varName = determineVarName(inner, serviceClasses);
+        if (varName != null) {
+            return varName;
+        } else if (inner.isMaybeServiceClass()) {
+            return createVarNameFromMethod(inner.getUnitName());
+        } else {
+            return getInstName(inner.getClassName());
+        }
+    }
+
     public static Set<FieldProperties> createTestClassHierarchy(MethodCallInfo callInfo) {
         FieldProperties testProp = new FieldProperties(callInfo.getClassName(), TEST_INST_VAR_NAME);
         testProp.setClassHierarchy(callInfo.getClassHierarchy());
@@ -106,5 +119,21 @@ public class GenerateUtil {
         serviceClasses.addAll(createTestClassHierarchy(callInfo));
         serviceClasses.addAll(callInfo.getServiceFields());
         return serviceClasses;
+    }
+    
+    public static Set<FieldProperties> createServiceFields(Set<MethodCallInfo> callInfoSet, Set<FieldProperties> serviceClasses) {
+        Set<FieldProperties> result = new HashSet<>();
+        for (MethodCallInfo call : callInfoSet) {
+            FieldProperties f = new FieldProperties();
+            f.setClassName(call.getClassName());
+            f.setUnitName(createMockVarName(call, serviceClasses));
+            f.setClassHierarchy(call.getClassHierarchy());
+            f.setInterfacesHierarchy(call.getInterfacesHierarchy());
+            f.setGenericString(call.getGenericString());
+            f.setFieldTypeModifiers(call.getClassModifiers());
+            f.setModifiers(call.getMethodModifiers());
+            result.add(f);
+        }
+        return result;
     }
 }

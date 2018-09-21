@@ -20,7 +20,8 @@ import static com.github.tankist88.object2source.util.GenerationUtil.getClearedC
 import static org.apache.commons.lang3.StringUtils.isNoneBlank;
 
 public class CreateMockFieldCommand extends AbstractReturnClassInfoCommand<FieldExtInfo> {
-
+    static final String CREATE_INST_METHOD = "createInstance";
+    
     private TestFieldCategory fieldCategory;
     private MethodCallInfo callInfo;
     private List<FieldExtInfo> fieldList;
@@ -102,7 +103,7 @@ public class CreateMockFieldCommand extends AbstractReturnClassInfoCommand<Field
 
         if (testClass && !callInfo.isClassHasZeroArgConstructor()) {
             String commonUtilClass = props.getDataProviderClassPattern() + COMMON_UTIL_POSTFIX;
-            String utilMethod = "createInstance(<type>)".replace("<type>", fieldTypeStr + ".class");
+            String utilMethod = CREATE_INST_METHOD + "(<type>)".replace("<type>", fieldTypeStr + ".class");
             fieldSb.append(" = ").append(commonUtilClass).append(".").append(utilMethod).append(";\n");
         } else {
             fieldSb.append(";\n");

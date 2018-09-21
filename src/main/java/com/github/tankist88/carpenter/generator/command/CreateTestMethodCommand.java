@@ -23,6 +23,8 @@ import java.util.*;
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.COMMON_UTIL_POSTFIX;
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static com.github.tankist88.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
+import static com.github.tankist88.carpenter.generator.TestGenerator.isCreateMockFields;
+import static com.github.tankist88.carpenter.generator.command.CreateMockFieldCommand.CREATE_INST_METHOD;
 import static com.github.tankist88.carpenter.generator.util.ConvertUtil.toMethodExtInfo;
 import static com.github.tankist88.carpenter.generator.util.GenerateUtil.*;
 import static com.github.tankist88.carpenter.generator.util.TypeHelper.*;
@@ -109,6 +111,9 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
         List<PreparedMock> mocks = createMocks(callInfo, createServiceFields(callInfo));
 
+        if (!isCreateMockFields()) {
+            appendTestInstance();
+        }
         if (props.isFillTestClassInstance()) {
             appendInitMethod();
         }
@@ -219,13 +224,24 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         Set<PreparedMock> allMocks = new HashSet<>();
         if (!Modifier.isStatic(callInfo.getMethodModifiers())) {
             SeparatedInners separatedInners = separateInners(callInfo.getInnerMethods(), serviceClasses);
+            Set<FieldProperties> fieldProperties;
+            if (isCreateMockFields()) {
+                fieldProperties = serviceClasses;
+            } else {
+                Set<MethodCallInfo> allMethods = new HashSet<>(separatedInners.getSingleInners());
+                for (Set<MethodCallInfo> multiInner : separatedInners.getMultipleInners()) {
+                    allMethods.addAll(multiInner);
+                }
+                fieldProperties = createServiceFields(allMethods, serviceClasses);
+                allMocks.addAll(createMockClasses(fieldProperties));
+            }
             SpyMaps spyMaps = createSpyMap(separatedInners);
             for (MethodCallInfo inner : separatedInners.getSingleInners()) {
-                PreparedMock mock = createSingleMock(inner, serviceClasses, spyMaps);
+                PreparedMock mock = createSingleMock(inner, fieldProperties, spyMaps);
                 if (mock != null) allMocks.add(mock);
             }
             for (Set<MethodCallInfo> multiInner : separatedInners.getMultipleInners()) {
-                PreparedMock mock = createMultipleMock(multiInner, serviceClasses, spyMaps);
+                PreparedMock mock = createMultipleMock(multiInner, fieldProperties, spyMaps);
                 if (mock != null) allMocks.add(mock);
             }
         }
@@ -237,6 +253,56 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             }
         });
         return resultList;
+    }
+
+    private void appendTestInstance() {
+        builder .append(TAB + TAB)
+                .append(getLastClassShort(callInfo.getClassName()))
+                .append(" ")
+                .append(TEST_INST_VAR_NAME)
+                .append(" = spy(");
+        if (!callInfo.isClassHasZeroArgConstructor()) {
+            String createInstMethod = props.getDataProviderClassPattern() + COMMON_UTIL_POSTFIX + "." + CREATE_INST_METHOD;
+            imports.add(createImportInfo(createInstMethod, callInfo.getClassName(), true));
+            builder.append("createInstance(").append(callInfo.getClassName()).append(".class)");
+        } else {
+            builder.append("new ").append(getLastClassShort(callInfo.getClassName())).append("()");
+        }
+        builder.append(");\n");
+    }
+
+    private Set<PreparedMock> createMockClasses(Set<FieldProperties> serviceClasses) {
+        Set<PreparedMock> result = new HashSet<>();
+        for (FieldProperties f : serviceClasses) {
+            boolean testClass = f.getClassName().equals(callInfo.getClassName());
+            
+            if (testClass) continue;
+            
+            StringBuilder mockBuilder = new StringBuilder();
+            String varType = f.getClassName();
+            if(!isPrimitive(varType) && !isWrapper(varType) && !varType.equals(String.class.getName())) {
+                imports.add(createImportInfo(varType, callInfo.getClassName()));
+            }
+            String depInjectMethod = props.getDataProviderClassPattern() + COMMON_UTIL_POSTFIX + ".notPublicAssignment";
+            imports.add(createImportInfo(depInjectMethod, callInfo.getClassName(), true));
+            
+            mockBuilder
+                    .append(TAB + TAB)
+                    .append(getLastClassShort(f.getClassName()))
+                    .append(" ")
+                    .append(f.getUnitName())
+                    .append(" = mock(")
+                    .append(getLastClassShort(f.getClassName()))
+                    .append(".class);\n")
+                    .append(TAB + TAB)
+                    .append("notPublicAssignment(")
+                    .append(TEST_INST_VAR_NAME).append(", ")
+                    .append("\"").append(f.getUnitName()).append("\"").append(", ")
+                    .append(f.getUnitName())
+                    .append(");\n");
+            result.add(new PreparedMock(mockBuilder.toString(), null));
+        }
+        return result;
     }
     
     private SpyMaps createSpyMap(SeparatedInners separatedInners) {
@@ -306,14 +372,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         if (testClass) {
             return TEST_INST_VAR_NAME;
         } else {
-            String varName = determineVarName(inner, serviceClasses);
-            if (varName != null) {
-                return varName;
-            } else if (inner.isMaybeServiceClass()) {
-                return createVarNameFromMethod(inner.getUnitName());
-            } else {
-                return getInstName(inner.getClassName());
-            }
+           return createMockVarName(inner, serviceClasses);
         }
     }
 

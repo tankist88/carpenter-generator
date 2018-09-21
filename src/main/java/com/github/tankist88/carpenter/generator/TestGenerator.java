@@ -14,6 +14,8 @@ import static com.github.tankist88.object2source.util.GenerationUtil.isAnonymous
 public class TestGenerator {
     public static final String GENERATED_TEST_CLASS_POSTFIX = "GeneratedTest";
     public static final String TEST_INST_VAR_NAME = "testInstance";
+    
+    private static final boolean CREATE_MOCK_FIELDS = false;
 
     private GenerationProperties props;
     private LoadDataService loadDataService;
@@ -21,6 +23,10 @@ public class TestGenerator {
     private TestGenerator() {
         this.props = loadProps();
         this.loadDataService = new LoadDataService();
+    }
+    
+    public static boolean isCreateMockFields() {
+        return CREATE_MOCK_FIELDS;
     }
 
     private boolean skipTestMethod(MethodCallInfo callInfo) {
@@ -46,9 +52,11 @@ public class TestGenerator {
         testBuilder.appendPreviousGenerated();
         for (MethodCallInfo callInfo : loadDataService.loadObjectDump()) {
             if(skipTestMethod(callInfo)) continue;
-            testBuilder.appendMockTestField(callInfo);
-            testBuilder.appendMockField(callInfo);
-            testBuilder.appendInitMock(callInfo);
+            if (isCreateMockFields()) {
+                testBuilder.appendMockTestField(callInfo);
+                testBuilder.appendMockField(callInfo);
+                testBuilder.appendInitMock(callInfo);
+            }
             testBuilder.appendTestMethod(callInfo);
         }
         return testBuilder.build();
