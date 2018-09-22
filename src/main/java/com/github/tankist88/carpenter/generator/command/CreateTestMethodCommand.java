@@ -30,6 +30,7 @@ import static com.github.tankist88.carpenter.generator.util.GenerateUtil.*;
 import static com.github.tankist88.carpenter.generator.util.TypeHelper.*;
 import static com.github.tankist88.object2source.util.AssigmentUtil.VAR_NAME_PLACEHOLDER;
 import static com.github.tankist88.object2source.util.GenerationUtil.*;
+import static java.lang.reflect.Modifier.isAbstract;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
@@ -148,7 +149,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private void appendResultCheckAssert() {
         AssertExtension assertExtension = findAssertExtension(callInfo);
         if (assertExtension != null) {
-            builder.append(createVariableAssigment(callInfo.getReturnArg(), CONTROL_VAR));
+            builder.append(createVariableAssignment(callInfo.getReturnArg(), CONTROL_VAR));
             builder.append(assertExtension.getAssertBlock(RESULT_VAR, CONTROL_VAR));
         }
     }
@@ -167,11 +168,11 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         }
     }
 
-    private String createVariableAssigment(GeneratedArgument generatedArgument, String varName) {
-        return createVariableAssigment(generatedArgument, varName, false);
+    private String createVariableAssignment(GeneratedArgument generatedArgument, String varName) {
+        return createVariableAssignment(generatedArgument, varName, false);
     }
     
-    private String createVariableAssigment(GeneratedArgument generatedArgument, String varName, boolean spy) {
+    private String createVariableAssignment(GeneratedArgument generatedArgument, String varName, boolean spy) {
         String varType = generatedArgument.getNearestInstantAbleClass();
         if(!isPrimitive(varType) && !isWrapper(varType) && !varType.equals(String.class.getName())) {
             imports.add(createImportInfo(varType, callInfo.getClassName()));
@@ -198,7 +199,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         Iterator<GeneratedArgument> iterator = callInfo.getArguments().iterator();
         while (iterator.hasNext()) {
             String argName = "_arg" + i;
-            providerBuilder.append(createVariableAssigment(iterator.next(), argName));
+            providerBuilder.append(createVariableAssignment(iterator.next(), argName));
             argBuilder.append(argName);
             if(iterator.hasNext()) argBuilder.append(", ");
             i++;
@@ -233,7 +234,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                     allMethods.addAll(multiInner);
                 }
                 fieldProperties = createServiceFields(allMethods, serviceClasses);
-                allMocks.addAll(createMockClasses(fieldProperties));
+                allMocks.addAll(createMockClasses(serviceClasses));
             }
             SpyMaps spyMaps = createSpyMap(separatedInners);
             for (MethodCallInfo inner : separatedInners.getSingleInners()) {
@@ -256,17 +257,21 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     }
 
     private void appendTestInstance() {
+        String clearedClassName = getClearedClassName(callInfo.getNearestInstantAbleClass());
+        imports.add(createImportInfo(clearedClassName, callInfo.getClassName()));
         builder .append(TAB + TAB)
-                .append(getLastClassShort(callInfo.getClassName()))
+                .append(getClassShort(clearedClassName))
                 .append(" ")
                 .append(TEST_INST_VAR_NAME)
                 .append(" = spy(");
-        if (!callInfo.isClassHasZeroArgConstructor()) {
+        if (isAbstract(callInfo.getClassModifiers())) {
+            builder.append(getClassShort(clearedClassName)).append(".class");
+        } else if (!callInfo.isClassHasZeroArgConstructor()) {
             String createInstMethod = props.getDataProviderClassPattern() + COMMON_UTIL_POSTFIX + "." + CREATE_INST_METHOD;
             imports.add(createImportInfo(createInstMethod, callInfo.getClassName(), true));
-            builder.append("createInstance(").append(callInfo.getClassName()).append(".class)");
+            builder.append("createInstance(").append(getClassShort(clearedClassName)).append(".class)");
         } else {
-            builder.append("new ").append(getLastClassShort(callInfo.getClassName())).append("()");
+            builder.append("new ").append(getClassShort(clearedClassName)).append("()");
         }
         builder.append(");\n");
     }
@@ -275,8 +280,9 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         Set<PreparedMock> result = new HashSet<>();
         for (FieldProperties f : serviceClasses) {
             boolean testClass = f.getClassName().equals(callInfo.getClassName());
+            boolean anonymousClass = getLastClassShort(f.getClassName()).matches("\\d+");
             
-            if (testClass) continue;
+            if (testClass || anonymousClass) continue;
             
             StringBuilder mockBuilder = new StringBuilder();
             String varType = f.getClassName();
@@ -288,11 +294,11 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             
             mockBuilder
                     .append(TAB + TAB)
-                    .append(getLastClassShort(f.getClassName()))
+                    .append(getClassShort(f.getClassName()))
                     .append(" ")
                     .append(f.getUnitName())
                     .append(" = mock(")
-                    .append(getLastClassShort(f.getClassName()))
+                    .append(getClassShort(f.getClassName()))
                     .append(".class);\n")
                     .append(TAB + TAB)
                     .append("notPublicAssignment(")
@@ -424,7 +430,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             String dpVar;
             if (spyMaps.getReturnSpyMap().containsKey(inner)) {
                 dpVar = spyMaps.getReturnSpyMap().get(inner);
-                mockBuilder.append(createVariableAssigment(inner.getReturnArg(), dpVar, true));
+                mockBuilder.append(createVariableAssignment(inner.getReturnArg(), dpVar, true));
             } else {
                 dpVar = createDataProvider(inner.getReturnArg());
             }
