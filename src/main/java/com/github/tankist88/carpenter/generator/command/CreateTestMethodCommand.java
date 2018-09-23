@@ -17,13 +17,13 @@ import com.github.tankist88.carpenter.generator.extension.assertext.AssertExtens
 import com.github.tankist88.object2source.dto.ProviderInfo;
 import com.github.tankist88.object2source.dto.ProviderResult;
 
-import java.lang.reflect.Modifier;
 import java.util.*;
 
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.COMMON_UTIL_POSTFIX;
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static com.github.tankist88.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
 import static com.github.tankist88.carpenter.generator.TestGenerator.isCreateMockFields;
+import static com.github.tankist88.carpenter.generator.TestGenerator.isUsePowermock;
 import static com.github.tankist88.carpenter.generator.command.CreateMockFieldCommand.CREATE_INST_METHOD;
 import static com.github.tankist88.carpenter.generator.util.ConvertUtil.toMethodExtInfo;
 import static com.github.tankist88.carpenter.generator.util.GenerateUtil.*;
@@ -31,6 +31,7 @@ import static com.github.tankist88.carpenter.generator.util.TypeHelper.*;
 import static com.github.tankist88.object2source.util.AssigmentUtil.VAR_NAME_PLACEHOLDER;
 import static com.github.tankist88.object2source.util.GenerationUtil.*;
 import static java.lang.reflect.Modifier.isAbstract;
+import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
@@ -57,6 +58,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private List<MethodExtInfo> methods;
     private Map<String, Set<ClassExtInfo>> dataProviders;
     private Set<ImportInfo> imports;
+    private Set<String> mockStaticClassNames;
 
     private Set<MethodExtInfo> arrayProviders;
 
@@ -81,6 +83,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         }
         this.arrayProviders = new HashSet<>();
         this.testClassHierarchy = createTestClassHierarchy(callInfo);
+        this.mockStaticClassNames = new HashSet<>();
     }
 
     @Override
@@ -125,7 +128,9 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
         builder.append(TAB + "}\n");
 
-        methods = singletonList(new MethodExtInfo(callInfo.getClassName(), testMethodName, builder.toString()));
+        MethodExtInfo testMethod = new MethodExtInfo(callInfo.getClassName(), testMethodName, builder.toString());
+        testMethod.getMockStaticClassNames().addAll(mockStaticClassNames);
+        methods = singletonList(testMethod);
     }
 
     private void appendInitMethod() {
@@ -213,7 +218,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             }
             builder.append(getLastClassShort(typeOfGenArg(callInfo.getReturnArg()))).append(" " + RESULT_VAR + " = ");
         }
-        if(Modifier.isStatic(callInfo.getMethodModifiers())) {
+        if(isStatic(callInfo.getMethodModifiers())) {
             builder.append(getClassShort(callInfo.getClassName())).append(".");
         } else {
             builder.append(TEST_INST_VAR_NAME + ".");
@@ -223,7 +228,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
 
     private List<PreparedMock> createMocks(MethodCallInfo callInfo, Set<FieldProperties> serviceClasses) {
         Set<PreparedMock> allMocks = new HashSet<>();
-        if (!Modifier.isStatic(callInfo.getMethodModifiers())) {
+        if (!isStatic(callInfo.getMethodModifiers())) {
             SeparatedInners separatedInners = separateInners(callInfo.getInnerMethods(), serviceClasses);
             Set<FieldProperties> fieldProperties;
             if (isCreateMockFields()) {
@@ -257,6 +262,8 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     }
 
     private void appendTestInstance() {
+        if (isStatic(callInfo.getMethodModifiers())) return;
+
         String clearedClassName = getClearedClassName(callInfo.getNearestInstantAbleClass());
         imports.add(createImportInfo(clearedClassName, callInfo.getClassName()));
         builder .append(TAB + TAB)
@@ -282,30 +289,40 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             boolean testClass = f.getClassName().equals(callInfo.getClassName());
             boolean anonymousClass = getLastClassShort(f.getClassName()).matches("\\d+");
             
-            if (testClass || anonymousClass) continue;
-            
-            StringBuilder mockBuilder = new StringBuilder();
+            if ((testClass && !isStatic(f.getModifiers())) || anonymousClass) continue;
+
             String varType = f.getClassName();
             if(!isPrimitive(varType) && !isWrapper(varType) && !varType.equals(String.class.getName())) {
                 imports.add(createImportInfo(varType, callInfo.getClassName()));
             }
-            String depInjectMethod = props.getDataProviderClassPattern() + COMMON_UTIL_POSTFIX + ".notPublicAssignment";
-            imports.add(createImportInfo(depInjectMethod, callInfo.getClassName(), true));
-            
-            mockBuilder
-                    .append(TAB + TAB)
-                    .append(getClassShort(f.getClassName()))
-                    .append(" ")
-                    .append(f.getUnitName())
-                    .append(" = mock(")
-                    .append(getClassShort(f.getClassName()))
-                    .append(".class);\n")
-                    .append(TAB + TAB)
-                    .append("notPublicAssignment(")
-                    .append(TEST_INST_VAR_NAME).append(", ")
-                    .append("\"").append(f.getUnitName()).append("\"").append(", ")
-                    .append(f.getUnitName())
-                    .append(");\n");
+
+            StringBuilder mockBuilder = new StringBuilder();
+            if (isUsePowermock() && isStatic(f.getModifiers())) {
+                mockStaticClassNames.add(f.getClassName());
+                mockBuilder
+                        .append(TAB + TAB)
+                        .append("PowerMockito.mockStatic(")
+                        .append(getClassShort(f.getClassName()))
+                        .append(".class")
+                        .append(");\n");
+            } else {
+                String depInjectMethod = props.getDataProviderClassPattern() + COMMON_UTIL_POSTFIX + ".notPublicAssignment";
+                imports.add(createImportInfo(depInjectMethod, callInfo.getClassName(), true));
+                mockBuilder
+                        .append(TAB + TAB)
+                        .append(getClassShort(f.getClassName()))
+                        .append(" ")
+                        .append(f.getUnitName())
+                        .append(" = mock(")
+                        .append(getClassShort(f.getClassName()))
+                        .append(".class);\n")
+                        .append(TAB + TAB)
+                        .append("notPublicAssignment(")
+                        .append(TEST_INST_VAR_NAME).append(", ")
+                        .append("\"").append(f.getUnitName()).append("\"").append(", ")
+                        .append(f.getUnitName())
+                        .append(");\n");
+            }
             result.add(new PreparedMock(mockBuilder.toString(), null));
         }
         return result;
@@ -422,6 +439,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private PreparedMock createSingleMock(MethodCallInfo inner, Set<FieldProperties> serviceClasses, SpyMaps spyMaps) {
         if (skipMock(inner, serviceClasses, testClassHierarchy) || forwardMock(inner, testClassHierarchy)) return null;
 
+//      TODO  when(ClientHolder.getClient()).thenReturn(client);
         boolean voidMethod = inner.isVoidMethod();
         StringBuilder mockBuilder = new StringBuilder();
         if (voidMethod) {

@@ -20,7 +20,7 @@ public class TestGeneratorTest {
         extractZip(zipFileIs, new File(tmpDir));
         int generatedTests = TestGenerator.runGenerator();
         assertEquals(generatedTests, 328);
-        deleteDirectory(new File(tmpDir + "/trace_dump"));
-        deleteDirectory(new File(tmpDir + "/ut_gen"));
+//        deleteDirectory(new File(tmpDir + "/trace_dump"));
+//        deleteDirectory(new File(tmpDir + "/ut_gen"));
     }
 }

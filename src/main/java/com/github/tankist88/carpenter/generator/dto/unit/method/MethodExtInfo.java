@@ -6,8 +6,7 @@ import com.github.tankist88.carpenter.generator.dto.source.MethodSource;
 import com.github.tankist88.carpenter.generator.dto.source.Variable;
 import com.github.tankist88.carpenter.generator.dto.unit.AbstractUnitExtInfo;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,6 +21,7 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
     );
 
     private int index = Integer.MAX_VALUE;
+    private Set<String> mockStaticClassNames = new HashSet<>();
 
     public MethodExtInfo() {
         super();
@@ -36,6 +36,13 @@ public class MethodExtInfo extends AbstractUnitExtInfo {
 
     public void setIndex(int index) {
         this.index = index;
+    }
+
+    public Set<String> getMockStaticClassNames() {
+        if (mockStaticClassNames == null) {
+            mockStaticClassNames = new HashSet<>();
+        }
+        return mockStaticClassNames;
     }
 
     public String createCommonMethodName() {

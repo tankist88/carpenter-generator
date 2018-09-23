@@ -17,6 +17,7 @@ public class TestGenerator {
     public static final String TEST_INST_VAR_NAME = "testInstance";
     
     private static final boolean CREATE_MOCK_FIELDS = false;
+    private static final boolean USE_POWERMOCK = true;
 
     private GenerationProperties props;
     private LoadDataService loadDataService;
@@ -28,6 +29,10 @@ public class TestGenerator {
     
     public static boolean isCreateMockFields() {
         return CREATE_MOCK_FIELDS;
+    }
+
+    public static boolean isUsePowermock() {
+        return USE_POWERMOCK;
     }
 
     private boolean skipTestMethod(MethodCallInfo callInfo) {

@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.*;
 
 import static com.github.tankist88.carpenter.generator.TestGenerator.GENERATED_TEST_CLASS_POSTFIX;
+import static com.github.tankist88.carpenter.generator.TestGenerator.isUsePowermock;
 import static com.github.tankist88.carpenter.generator.util.GenerateUtil.createAndReturnPathName;
 import static com.github.tankist88.carpenter.generator.util.TypeHelper.createImportInfo;
 import static com.github.tankist88.carpenter.generator.util.codeformat.ImportsFormatUtil.organizeImports;
@@ -78,7 +79,20 @@ public class CreateJavaClassesCommand extends AbstractCommand {
             String postfix = fullClassName.startsWith(dataProviderClassPattern) ? "" : GENERATED_TEST_CLASS_POSTFIX;
 
             classBuilder.append("@Generated(value = \"").append(TestGenerator.class.getName()).append("\")\n");
-            classBuilder.append("public class ").append(className).append(postfix).append(" {\n\n");
+
+            if (isUsePowermock()) {
+                classBuilder
+                        .append("@PrepareForTest({")
+                        .append(staticMockClasses(extractMethods(groupList)))
+                        .append("})\n");
+            }
+
+            classBuilder.append("public class ").append(className).append(postfix);
+            if (isUsePowermock()) {
+                classBuilder.append(" extends PowerMockTestCase").append(" {\n\n");
+            } else {
+                classBuilder.append(" {\n\n");
+            }
 
             for(ClassExtInfo unit : groupList) {
                 if(unit instanceof FieldExtInfo) {
@@ -96,6 +110,18 @@ public class CreateJavaClassesCommand extends AbstractCommand {
         }
     }
 
+    private String staticMockClasses(Set<MethodExtInfo> methods) {
+        StringBuilder builder = new StringBuilder();
+        for (MethodExtInfo m : methods) {
+            Iterator<String> iterator = m.getMockStaticClassNames().iterator();
+            while (iterator.hasNext()) {
+                builder.append(iterator.next()).append(".class");
+                if (iterator.hasNext()) builder.append(", ");
+            }
+        }
+        return builder.toString();
+    }
+
     private void addDefaultImports(Set<ClassExtInfo> units, String fullClassName, String dataProviderClassPattern) {
         if(!fullClassName.startsWith(dataProviderClassPattern)) {
             units.add(createImportInfo("org.testng.annotations.*", fullClassName));
@@ -105,6 +131,13 @@ public class CreateJavaClassesCommand extends AbstractCommand {
             units.add(createImportInfo("org.mockito.stubbing.Answer", fullClassName));
             units.add(createImportInfo("org.mockito.Spy", fullClassName));
             units.add(createImportInfo("org.mockito.Mock", fullClassName));
+
+            if (isUsePowermock()) {
+                units.add(createImportInfo("org.powermock.api.mockito.PowerMockito", fullClassName));
+                units.add(createImportInfo("org.powermock.core.classloader.annotations.PrepareForTest", fullClassName));
+                units.add(createImportInfo("org.powermock.modules.testng.PowerMockTestCase", fullClassName));
+            }
+
             units.add(createImportInfo("org.testng.Assert.*", fullClassName, true));
             units.add(createImportInfo("org.mockito.ArgumentMatchers.*", fullClassName, true));
             units.add(createImportInfo("org.mockito.Mockito.*", fullClassName, true));
