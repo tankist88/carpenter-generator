@@ -10,6 +10,7 @@ import java.lang.reflect.Modifier;
 import static com.github.tankist88.carpenter.core.property.GenerationPropertiesFactory.loadProps;
 import static com.github.tankist88.carpenter.generator.util.GenerateUtil.allowedPackage;
 import static com.github.tankist88.object2source.util.GenerationUtil.isAnonymousClass;
+import static java.lang.reflect.Modifier.isPublic;
 
 public class TestGenerator {
     public static final String GENERATED_TEST_CLASS_POSTFIX = "GeneratedTest";
@@ -35,7 +36,9 @@ public class TestGenerator {
 
     private static boolean skipTestMethod(MethodCallInfo callInfo, GenerationProperties props) {
         boolean deniedModifier = Modifier.isPrivate(callInfo.getMethodModifiers());
-        boolean deniedDeclarationPlace = !callInfo.getClassName().equals(callInfo.getDeclaringTypeName());
+        boolean deniedDeclarationPlace =
+                !callInfo.getClassName().equals(callInfo.getDeclaringTypeName()) &&
+                !isPublic(callInfo.getMethodModifiers());
         boolean deniedClassType = callInfo.isMemberClass() && !Modifier.isStatic(callInfo.getClassModifiers());
         boolean anonymousClass = isAnonymousClass(callInfo.getClassName());
         boolean skipNoZeroArgConst = !callInfo.isClassHasZeroArgConstructor() && !props.isNoZeroArgConstructorTestAllowed();
@@ -62,7 +65,7 @@ public class TestGenerator {
         return testBuilder.build();
     }
 
-    public static int runGenerator() {
+    static int runGenerator() {
         return (new TestGenerator()).generate();
     }
 
