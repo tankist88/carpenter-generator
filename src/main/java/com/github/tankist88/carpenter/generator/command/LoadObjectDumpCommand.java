@@ -14,7 +14,9 @@ import java.io.FileInputStream;
 import java.util.*;
 
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.OBJ_FILE_EXTENSION;
+import static com.github.tankist88.carpenter.generator.util.GenerateUtil.createServiceFields;
 import static com.github.tankist88.carpenter.generator.util.GenerateUtil.getFileList;
+import static com.github.tankist88.carpenter.generator.util.TypeHelper.determineVarName;
 
 public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<MethodCallInfo> {
 
@@ -43,8 +45,6 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
     }
 
     private List<MethodCallInfo> loadObjectData() throws CallerNotFoundException, DeserializationException {
-        List<MethodCallInfo> result = new ArrayList<>();
-
         Map<String, Set<MethodCallTraceInfo>> commonDataMap = new HashMap<>();
 
         for (File objDump : getFileList(new File(props.getObjectDumpDir()), OBJ_FILE_EXTENSION)) {
@@ -74,23 +74,46 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
             }
             methodSet.add(callTraceInfo);
         }
+
+        List<MethodCallTraceInfo> sortedList = new ArrayList<>();
         for (Set<MethodCallTraceInfo> values : commonDataMap.values()) {
-            for (MethodCallTraceInfo value : values) {
-                String upLevelKey = value.getTraceAnalyzeData().getUpLevelElementKey();
-                if (upLevelKey == null) {
-                    throw new CallerNotFoundException("FATAL ERROR!!! Can't determine caller for " + value);
-                }
-                Set<MethodCallTraceInfo> callers = commonDataMap.get(upLevelKey);
-                if (callers != null) {
-                    for (MethodCallTraceInfo m : callers) {
-                        if (m != null && !m.getKey().equals(value.getKey())) m.getInnerMethods().add(value);
+            sortedList.addAll(values);
+        }
+        Collections.sort(sortedList, new Comparator<MethodCallTraceInfo>() {
+            @Override
+            public int compare(MethodCallTraceInfo o1, MethodCallTraceInfo o2) {
+                return (o1.getCallTime() > o2.getCallTime()) ? 1 : -1;
+            }
+        });
+        for (MethodCallTraceInfo value : sortedList) {
+            String upLevelKey = value.getTraceAnalyzeData().getUpLevelElementKey();
+            if (upLevelKey == null) {
+                throw new CallerNotFoundException("FATAL ERROR!!! Can't determine caller for " + value);
+            }
+            Set<MethodCallTraceInfo> callers = commonDataMap.get(upLevelKey);
+            if (callers != null) {
+                for (MethodCallTraceInfo m : callers) {
+                    if (m != null && !m.getKey().equals(value.getKey())) {
+//                        Set<String> varNames = new HashSet<>();
+//                        Set<String> varTypeNames = new HashSet<>();
+//                        for (MethodCallInfo inner : m.getInnerMethods()) {
+//                            String varName = determineVarName(inner, createServiceFields(m));
+//                            if (varName != null) {
+//                                varNames.add(varName);
+//                                varTypeNames.add(inner.getNearestInstantAbleClass() + " " + varName);
+//                            }
+//                        }
+//                        String valueVarName = determineVarName(value, createServiceFields(m));
+//                        String valueVarTypeName = value.getNearestInstantAbleClass() + " " + valueVarName;
+//                        boolean allowedInner = !varNames.contains(valueVarName) || varTypeNames.contains(valueVarTypeName);
+//                        if (allowedInner) {
+                            m.getInnerMethods().add(value);
+//                        }
                     }
                 }
             }
         }
-        for (Set<MethodCallTraceInfo> values : commonDataMap.values()) {
-            result.addAll(values);
-        }
-        return result;
+
+        return new ArrayList<MethodCallInfo>(sortedList);
     }
 }

@@ -19,7 +19,7 @@ public class TestGeneratorTest {
         InputStream zipFileIs = getClass().getClassLoader().getResourceAsStream("trace_dump.zip");
         extractZip(zipFileIs, new File(tmpDir));
         int generatedTests = TestGenerator.runGenerator();
-        assertEquals(generatedTests, 328);
+        assertEquals(generatedTests, 262);
 //        deleteDirectory(new File(tmpDir + "/trace_dump"));
 //        deleteDirectory(new File(tmpDir + "/ut_gen"));
     }

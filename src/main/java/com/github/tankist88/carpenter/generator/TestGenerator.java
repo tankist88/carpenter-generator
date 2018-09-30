@@ -41,9 +41,7 @@ public class TestGenerator {
 
     private static boolean skipTestMethod(MethodCallInfo callInfo, GenerationProperties props) {
         boolean deniedModifier = Modifier.isPrivate(callInfo.getMethodModifiers());
-        boolean deniedDeclarationPlace =
-                !callInfo.getClassName().equals(callInfo.getDeclaringTypeName()) &&
-                !isPublic(callInfo.getMethodModifiers());
+        boolean deniedDeclarationPlace = !callInfo.getClassName().equals(callInfo.getDeclaringTypeName());
         boolean deniedClassType = callInfo.isMemberClass() && !Modifier.isStatic(callInfo.getClassModifiers());
         boolean anonymousClass = isAnonymousClass(callInfo.getClassName());
         boolean skipNoZeroArgConst = !callInfo.isClassHasZeroArgConstructor() && !props.isNoZeroArgConstructorTestAllowed();
@@ -61,9 +59,10 @@ public class TestGenerator {
         for (MethodCallInfo callInfo : loadDataService.loadObjectDump()) {
             if(skipTestMethod(callInfo)) continue;
             if (isCreateMockFields()) {
-                testBuilder.appendMockTestField(callInfo);
-                testBuilder.appendMockField(callInfo);
-                testBuilder.appendInitMock(callInfo);
+                testBuilder
+                        .appendMockTestField(callInfo)
+                        .appendMockField(callInfo)
+                        .appendInitMock(callInfo);
             }
             testBuilder.appendTestMethod(callInfo);
         }

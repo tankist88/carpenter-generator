@@ -8,4 +8,5 @@
     </allowedPackagesForTests>
     <fillTestClassInstance>true</fillTestClassInstance>
     <noZeroArgConstructorTestAllowed>true</noZeroArgConstructorTestAllowed>
+    <encoding>windows-1251</encoding>
 </carpenterConfig>

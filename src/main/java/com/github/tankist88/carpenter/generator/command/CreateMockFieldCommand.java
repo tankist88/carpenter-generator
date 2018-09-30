@@ -58,7 +58,7 @@ public class CreateMockFieldCommand extends AbstractReturnClassInfoCommand<Field
 
             Set<FieldExtInfo> innerFieldsSet = new HashSet<>();
             for (MethodCallInfo inner : callInfo.getInnerMethods()) {
-                if (skipMock(inner, serviceFields, testClassHierarchy) || forwardMock(inner, testClassHierarchy)) {
+                if (skipMock(inner, callInfo, serviceFields, testClassHierarchy, null) || forwardMock(inner, callInfo, testClassHierarchy)) {
                     continue;
                 }
                 if (inner.isMaybeServiceClass()) {

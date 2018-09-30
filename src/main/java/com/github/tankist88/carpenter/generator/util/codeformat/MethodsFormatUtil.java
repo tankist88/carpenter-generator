@@ -13,6 +13,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.util.*;
 
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.TAB;
+import static com.github.tankist88.carpenter.generator.TestGenerator.isUsePowermock;
 import static com.github.tankist88.carpenter.generator.command.CreateTestMethodCommand.TEST_ANNOTATION;
 
 public class MethodsFormatUtil {
@@ -76,7 +77,12 @@ public class MethodsFormatUtil {
                 return o1.getUnitName().compareTo(o2.getUnitName());
             }
         });
-        return createDataProviders(allMethodsSortedList);
+        if (isUsePowermock()) {
+            //PowerMockito Bug: https://github.com/powermock/powermock/issues/484
+            return allMethodsSortedList;
+        } else  {
+            return createDataProviders(allMethodsSortedList);
+        }
     }
 
     private static List<MethodExtInfo> createDataProviders(List<MethodExtInfo> allMethodsSortedList) {

@@ -67,7 +67,6 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                     return o1.getUnitName().compareTo(o2.getUnitName());
                 }
             });
-
             StringBuilder classBuilder = new StringBuilder();
             classBuilder.append("package ").append(packageName).append(";\n\n");
 
@@ -75,25 +74,17 @@ public class CreateJavaClassesCommand extends AbstractCommand {
                 classBuilder.append(unit);
             }
             classBuilder.append("\n");
-
             String postfix = fullClassName.startsWith(dataProviderClassPattern) ? "" : GENERATED_TEST_CLASS_POSTFIX;
-
             classBuilder.append("@Generated(value = \"").append(TestGenerator.class.getName()).append("\")\n");
-
-            if (isUsePowermock()) {
-                classBuilder
-                        .append("@PrepareForTest({")
-                        .append(staticMockClasses(extractMethods(groupList)))
-                        .append("})\n");
+            if (isUsePowermock() && getMockStaticClassNames(extractMethods(groupList)).size() > 0) {
+                classBuilder.append("@PrepareForTest({").append(staticMockClasses(extractMethods(groupList))).append("})\n");
             }
-
             classBuilder.append("public class ").append(className).append(postfix);
-            if (isUsePowermock()) {
+            if (isUsePowermock() && getMockStaticClassNames(extractMethods(groupList)).size() > 0) {
                 classBuilder.append(" extends PowerMockTestCase").append(" {\n\n");
             } else {
                 classBuilder.append(" {\n\n");
             }
-
             for(ClassExtInfo unit : groupList) {
                 if(unit instanceof FieldExtInfo) {
                     classBuilder.append(unit.getBody()).append("\n");
@@ -102,24 +93,29 @@ public class CreateJavaClassesCommand extends AbstractCommand {
             for(MethodExtInfo unit : createDataProviders(extractMethods(groupList))) {
                 classBuilder.append(unit.getBody()).append("\n");
             }
-
             classBuilder.append("}");
 
             File utClass = new File(packageFileStruct + "/" + className + postfix + ".java");
-            write(utClass, classBuilder.toString(), "UTF-8");
+            write(utClass, classBuilder.toString(), props.getEncoding());
         }
     }
 
     private String staticMockClasses(Set<MethodExtInfo> methods) {
         StringBuilder builder = new StringBuilder();
-        for (MethodExtInfo m : methods) {
-            Iterator<String> iterator = m.getMockStaticClassNames().iterator();
-            while (iterator.hasNext()) {
-                builder.append(iterator.next()).append(".class");
-                if (iterator.hasNext()) builder.append(", ");
-            }
+        Iterator<String> iterator = getMockStaticClassNames(methods).iterator();
+        while (iterator.hasNext()) {
+            builder.append(iterator.next()).append(".class");
+            if (iterator.hasNext()) builder.append(", ");
         }
         return builder.toString();
+    }
+
+    private Set<String> getMockStaticClassNames(Set<MethodExtInfo> methods) {
+        Set<String> result = new HashSet<>();
+        for (MethodExtInfo m : methods) {
+            result.addAll(m.getMockStaticClassNames());
+        }
+        return result;
     }
 
     private void addDefaultImports(Set<ClassExtInfo> units, String fullClassName, String dataProviderClassPattern) {

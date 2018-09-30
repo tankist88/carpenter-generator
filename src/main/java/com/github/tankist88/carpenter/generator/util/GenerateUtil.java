@@ -3,22 +3,23 @@ package com.github.tankist88.carpenter.generator.util;
 import com.github.tankist88.carpenter.core.dto.unit.field.FieldProperties;
 import com.github.tankist88.carpenter.core.dto.unit.method.MethodCallInfo;
 import com.github.tankist88.carpenter.core.property.GenerationProperties;
+import com.github.tankist88.carpenter.generator.dto.SpyMaps;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import static com.github.tankist88.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
+import static com.github.tankist88.carpenter.generator.TestGenerator.isCreateMockFields;
+import static com.github.tankist88.carpenter.generator.TestGenerator.isUsePowermock;
 import static com.github.tankist88.carpenter.generator.util.TypeHelper.determineVarName;
 import static com.github.tankist88.carpenter.generator.util.TypeHelper.isSameTypes;
-import static com.github.tankist88.object2source.util.GenerationUtil.downFirst;
-import static com.github.tankist88.object2source.util.GenerationUtil.getInstName;
-import static com.github.tankist88.object2source.util.GenerationUtil.getLastClassShort;
+import static com.github.tankist88.object2source.util.GenerationUtil.*;
+import static java.lang.reflect.Modifier.*;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public class GenerateUtil {
@@ -63,16 +64,19 @@ public class GenerateUtil {
 
     /**
      * Return true if need skip mock for method in argument, but need create mocks for their inner calls
-     * @param callInfo method call info
+     * @param inner method call info
      * @return true if need skip mock for method in argument, but need create mocks for their inner calls
      */
-    public static boolean forwardMock(MethodCallInfo callInfo, Set<FieldProperties> testClassHierarchy) {
-        boolean sameTypeWithTest = isSameTypes(callInfo, testClassHierarchy);
-        boolean voidMethod = callInfo.isVoidMethod();
-        boolean privateMethod = Modifier.isPrivate(callInfo.getMethodModifiers());
-        boolean protectedMethod = Modifier.isProtected(callInfo.getMethodModifiers());
-        boolean anonymousClass = getLastClassShort(callInfo.getClassName()).matches("\\d+");
-        return  (voidMethod && sameTypeWithTest) ||
+    public static boolean forwardMock(MethodCallInfo inner, MethodCallInfo callInfo, Set<FieldProperties> testClassHierarchy) {
+        boolean sameTypeWithTest = isSameTypes(inner, testClassHierarchy);
+        boolean sameMethodWithTest = callInfo.getUnitName().equals(inner.getUnitName());
+        boolean voidMethod = inner.isVoidMethod();
+        boolean privateMethod = isPrivate(inner.getMethodModifiers());
+        boolean protectedMethod = isProtected(inner.getMethodModifiers());
+        boolean anonymousClass = getLastClassShort(inner.getClassName()).matches("\\d+");
+        return
+                (sameMethodWithTest && sameTypeWithTest) ||
+                (voidMethod && sameTypeWithTest) ||
                 privateMethod ||
                 protectedMethod ||
                 anonymousClass;
@@ -80,17 +84,27 @@ public class GenerateUtil {
 
     /**
      * Return true if need skip create mock for method in argument
+     * @param inner inner method to check
      * @param callInfo method call info
      * @param serviceClasses service fields of test class
      * @return true if need skip create mock for method in argument
      */
-    public static boolean skipMock(MethodCallInfo callInfo, Set<FieldProperties> serviceClasses, Set<FieldProperties> testClassHierarchy) {
-        boolean staticMethod = Modifier.isStatic(callInfo.getMethodModifiers());
+    public static boolean skipMock(MethodCallInfo inner, MethodCallInfo callInfo, Set<FieldProperties> serviceClasses, Set<FieldProperties> testClassHierarchy, SpyMaps spyMaps) {
+        boolean staticMethod = isStatic(inner.getMethodModifiers()) && !isUsePowermock();
+        boolean notStaticCallInStaticCtx = isStatic(callInfo.getMethodModifiers()) && !isStatic(inner.getMethodModifiers());
+        boolean varNotFound = 
+                spyMaps != null && 
+                !isCreateMockFields() && 
+                !isStatic(inner.getMethodModifiers()) && 
+                determineVarName(inner, serviceClasses) == null
+                && !spyMaps.getTargetSpyMap().containsKey(inner);
         return  staticMethod ||
+                varNotFound || 
+                notStaticCallInStaticCtx || 
                 (
-                        !isSameTypes(callInfo, serviceClasses) &&
-                        !isSameTypes(callInfo, testClassHierarchy) &&
-                        !callInfo.isMaybeServiceClass()
+                        !isSameTypes(inner, serviceClasses) &&
+                        !isSameTypes(inner, testClassHierarchy) &&
+                        !inner.isMaybeServiceClass()
                 );
     }
 
