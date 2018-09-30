@@ -9,4 +9,6 @@
     <fillTestClassInstance>true</fillTestClassInstance>
     <noZeroArgConstructorTestAllowed>true</noZeroArgConstructorTestAllowed>
     <encoding>windows-1251</encoding>
+    <useAnnotationMockStyle>false</useAnnotationMockStyle>
+    <usePowermock>true</usePowermock>
 </carpenterConfig>

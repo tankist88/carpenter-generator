@@ -8,4 +8,6 @@
     </allowedPackagesForTests>
     <fillTestClassInstance>true</fillTestClassInstance>
     <noZeroArgConstructorTestAllowed>true</noZeroArgConstructorTestAllowed>
+    <useAnnotationMockStyle>false</useAnnotationMockStyle>
+    <usePowermock>true</usePowermock>
 </carpenterConfig>
