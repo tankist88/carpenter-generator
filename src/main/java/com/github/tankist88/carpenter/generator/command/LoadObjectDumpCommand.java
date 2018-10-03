@@ -1,5 +1,6 @@
 package com.github.tankist88.carpenter.generator.command;
 
+import com.github.tankist88.carpenter.core.dto.unit.field.FieldProperties;
 import com.github.tankist88.carpenter.core.dto.unit.method.MethodCallInfo;
 import com.github.tankist88.carpenter.core.dto.unit.method.MethodCallTraceInfo;
 import com.github.tankist88.carpenter.core.exception.CallerNotFoundException;
@@ -94,21 +95,22 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
             if (callers != null) {
                 for (MethodCallTraceInfo m : callers) {
                     if (m != null && !m.getKey().equals(value.getKey())) {
-//                        Set<String> varNames = new HashSet<>();
-//                        Set<String> varTypeNames = new HashSet<>();
-//                        for (MethodCallInfo inner : m.getInnerMethods()) {
-//                            String varName = determineVarName(inner, createServiceFields(m));
-//                            if (varName != null) {
-//                                varNames.add(varName);
-//                                varTypeNames.add(inner.getNearestInstantAbleClass() + " " + varName);
-//                            }
-//                        }
-//                        String valueVarName = determineVarName(value, createServiceFields(m));
-//                        String valueVarTypeName = value.getNearestInstantAbleClass() + " " + valueVarName;
-//                        boolean allowedInner = !varNames.contains(valueVarName) || varTypeNames.contains(valueVarTypeName);
-//                        if (allowedInner) {
+                        Set<FieldProperties> serviceFields = createServiceFields(m);
+                        Set<String> varNames = new HashSet<>();
+                        Set<String> varTypeNames = new HashSet<>();
+                        for (MethodCallInfo inner : m.getInnerMethods()) {
+                            String varName = determineVarName(inner, serviceFields);
+                            if (varName != null) {
+                                varNames.add(varName);
+                                varTypeNames.add(inner.getNearestInstantAbleClass() + " " + varName);
+                            }
+                        }
+                        String valueVarName = determineVarName(value, serviceFields);
+                        String valueVarTypeName = value.getNearestInstantAbleClass() + " " + valueVarName;
+                        boolean allowedInner = !varNames.contains(valueVarName) || varTypeNames.contains(valueVarTypeName);
+                        if (allowedInner || value.isMaybeServiceClass()) {
                             m.getInnerMethods().add(value);
-//                        }
+                        }
                     }
                 }
             }
