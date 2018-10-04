@@ -79,8 +79,6 @@ public class MethodExtInfoTest {
 
         MethodSource methodSource = methodExtInfo.createMethodSource();
 
-        System.out.println(methodSource.toString());
-
         assertEquals(methodSource.toString(), body);
     }
 }

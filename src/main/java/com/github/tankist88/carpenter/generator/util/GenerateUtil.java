@@ -8,10 +8,7 @@ import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static com.github.tankist88.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
 import static com.github.tankist88.carpenter.generator.TestGenerator.isCreateMockFields;
@@ -137,10 +134,15 @@ public class GenerateUtil {
     
     public static Set<FieldProperties> createServiceFields(Set<MethodCallInfo> callInfoSet, Set<FieldProperties> serviceClasses) {
         Set<FieldProperties> result = new HashSet<>();
-        for (MethodCallInfo call : callInfoSet) {
+        Set<String> varNameUniqueSet = new HashSet<>();
+        List<MethodCallInfo> sortedCallInfos = new ArrayList<>(callInfoSet);
+        sortMethodCallInfos(sortedCallInfos);
+        for (MethodCallInfo call : sortedCallInfos) {
+            String unitName = createMockVarName(call, serviceClasses);
+            if (unitName != null && !varNameUniqueSet.add(unitName)) continue;
             FieldProperties f = new FieldProperties();
             f.setClassName(call.getClassName());
-            f.setUnitName(createMockVarName(call, serviceClasses));
+            f.setUnitName(unitName);
             f.setClassHierarchy(call.getClassHierarchy());
             f.setInterfacesHierarchy(call.getInterfacesHierarchy());
             f.setGenericString(call.getGenericString());
@@ -149,5 +151,14 @@ public class GenerateUtil {
             result.add(f);
         }
         return result;
+    }
+
+    public static void sortMethodCallInfos(List<MethodCallInfo> methodCallInfos) {
+        Collections.sort(methodCallInfos, new Comparator<MethodCallInfo>() {
+            @Override
+            public int compare(MethodCallInfo o1, MethodCallInfo o2) {
+                return Long.compare(o1.getCallTime(), o2.getCallTime());
+            }
+        });
     }
 }

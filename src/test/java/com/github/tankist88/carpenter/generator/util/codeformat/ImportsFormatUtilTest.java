@@ -45,7 +45,6 @@ public class ImportsFormatUtilTest {
         List<String> result = tree.cutOne();
         assertEquals(controlList.size(), result.size());
         for (String r : result) {
-            System.out.println(r);
             assertTrue(controlList.contains(r));
         }
     }
@@ -82,7 +81,6 @@ public class ImportsFormatUtilTest {
         List<String> result = tree.toList();
         assertEquals(imports.size(), result.size());
         for (String r : result) {
-            System.out.println(r);
             assertTrue(imports.contains(r));
         }
     }

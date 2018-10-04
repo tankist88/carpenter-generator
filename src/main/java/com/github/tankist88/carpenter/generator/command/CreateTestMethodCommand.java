@@ -36,6 +36,8 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<ClassExtInfo> {
     private static final int DATA_PROVIDER_MAX_LENGTH_IN_METHODS = 40;
 
+    private static final String GOOD_MOCKITO_VERSION = "2.8.9";
+
     public static final String TEST_ANNOTATION = "@Test";
     public static final String HASH_CODE_SEPARATOR = "_";
     public static final String TEST_METHOD_PREFIX = "test";
@@ -340,12 +342,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         for (Set<MethodCallInfo> multiInner : separatedInners.getMultipleInners()) {
             allMethods.addAll(multiInner);
         }
-        Collections.sort(allMethods, new Comparator<MethodCallInfo>() {
-            @Override
-            public int compare(MethodCallInfo o1, MethodCallInfo o2) {
-                return (o1.getCallTime() > o2.getCallTime()) ? 1 : -1;
-            }
-        });
+        sortMethodCallInfos(allMethods);
         int varCounter = 0;
         for (MethodCallInfo inner : allMethods) {
             for (MethodCallInfo current : allMethods) {
@@ -408,12 +405,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         MethodCallInfo innerFirst = innerSet.iterator().next();
         String retType = innerFirst.getReturnArg().getClassName();
         List<MethodCallInfo> methodCallInfoList = new ArrayList<>(innerSet);
-        Collections.sort(methodCallInfoList, new Comparator<MethodCallInfo>() {
-            @Override
-            public int compare(MethodCallInfo o1, MethodCallInfo o2) {
-                return (o1.getCallTime() > o2.getCallTime()) ? 1 : -1;
-            }
-        });
+        sortMethodCallInfos(methodCallInfoList);
         StringBuilder bodyBuilder = new StringBuilder();
         Iterator<MethodCallInfo> methodCallInfoIterator = methodCallInfoList.iterator();
         while(methodCallInfoIterator.hasNext()) {
@@ -560,6 +552,8 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 if(!isPrimitive(arg.getGenericString()) && !isWrapper(arg.getGenericString()) && !arg.getGenericString().equals(String.class.getName())) {
                     imports.add(createImportInfo(arg.getGenericString(), callInfo.getClassName()));
                 }
+            } else if (arg.getGenerated() == null && props.getTargetMockitoVersion().equals(GOOD_MOCKITO_VERSION)) {
+                sb.append("null");
             } else {
                 String clearedType = getClearedClassName(arg.getNearestInstantAbleClass());
                 sb.append("nullable(").append(getClassShort(clearedType)).append(".class").append(")");
