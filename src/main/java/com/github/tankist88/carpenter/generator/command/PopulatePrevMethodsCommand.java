@@ -12,8 +12,8 @@ import com.github.tankist88.carpenter.generator.dto.unit.ClassExtInfo;
 import com.github.tankist88.carpenter.generator.dto.unit.field.FieldExtInfo;
 import com.github.tankist88.carpenter.generator.dto.unit.imports.ImportInfo;
 import com.github.tankist88.carpenter.generator.dto.unit.method.MethodExtInfo;
-import com.github.tankist88.carpenter.generator.util.ConvertUtil;
-import com.github.tankist88.carpenter.generator.util.GenerateUtil;
+import com.github.tankist88.carpenter.generator.util.ConvertUtils;
+import com.github.tankist88.carpenter.generator.util.GenerateUtils;
 import com.github.tankist88.carpenter.generator.util.TypeHelper;
 import com.github.tankist88.object2source.dto.ProviderInfo;
 
@@ -56,7 +56,7 @@ public class PopulatePrevMethodsCommand extends AbstractReturnClassInfoCommand<C
         try {
             existsMethodsMap = new HashMap<>();
             String dataProviderClassPattern = props.getDataProviderClassPattern();
-            for (File f : GenerateUtil.getFileList(new File(props.getUtGenDir()), "java")) {
+            for (File f : GenerateUtils.getFileList(new File(props.getUtGenDir()), "java")) {
                 boolean allowedFiles = (f.getName().endsWith(TestGenerator.GENERATED_TEST_CLASS_POSTFIX + ".java") ||
                         f.getName().startsWith(getClassShort(dataProviderClassPattern)));
                 if (!allowedFiles) continue;
@@ -139,7 +139,7 @@ public class PopulatePrevMethodsCommand extends AbstractReturnClassInfoCommand<C
             String commonClassName = dataProviderClassPattern + COMMON_UTIL_POSTFIX;
             Set<ClassExtInfo> commonMethods = new HashSet<>();
             for (ProviderInfo p : getCommonMethods(TAB)) {
-                commonMethods.add(ConvertUtil.toMethodExtInfo(commonClassName, p));
+                commonMethods.add(ConvertUtils.toMethodExtInfo(commonClassName, p));
             }
 
             Set<ClassExtInfo> existsCommonMethods = existsMethodsMap.get(commonClassName);

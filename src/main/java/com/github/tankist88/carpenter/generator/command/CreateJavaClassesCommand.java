@@ -13,7 +13,7 @@ import java.util.*;
 
 import static com.github.tankist88.carpenter.generator.TestGenerator.GENERATED_TEST_CLASS_POSTFIX;
 import static com.github.tankist88.carpenter.generator.TestGenerator.isUsePowermock;
-import static com.github.tankist88.carpenter.generator.util.GenerateUtil.createAndReturnPathName;
+import static com.github.tankist88.carpenter.generator.util.GenerateUtils.createAndReturnPathName;
 import static com.github.tankist88.carpenter.generator.util.TypeHelper.createImportInfo;
 import static com.github.tankist88.carpenter.generator.util.codeformat.ImportsFormatUtil.organizeImports;
 import static com.github.tankist88.carpenter.generator.util.codeformat.MethodsFormatUtil.createDataProviders;

@@ -19,7 +19,7 @@ import static com.github.tankist88.object2source.util.GenerationUtil.*;
 import static java.lang.reflect.Modifier.*;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
-public class GenerateUtil {
+public class GenerateUtils {
     public static boolean allowedPackage(String classname, GenerationProperties props) {
         for(String p : props.getAllowedPackagesForTests()) {
             if(classname.startsWith(p)) return true;
@@ -138,11 +138,11 @@ public class GenerateUtil {
         List<MethodCallInfo> sortedCallInfos = new ArrayList<>(callInfoSet);
         sortMethodCallInfos(sortedCallInfos);
         for (MethodCallInfo call : sortedCallInfos) {
-            String unitName = createMockVarName(call, serviceClasses);
-            if (unitName != null && !varNameUniqueSet.add(unitName)) continue;
+            String checkUnitName = determineVarName(call, serviceClasses);
+            if (checkUnitName != null && !varNameUniqueSet.add(checkUnitName)) continue;
             FieldProperties f = new FieldProperties();
             f.setClassName(call.getClassName());
-            f.setUnitName(unitName);
+            f.setUnitName(createMockVarName(call, serviceClasses));
             f.setClassHierarchy(call.getClassHierarchy());
             f.setInterfacesHierarchy(call.getInterfacesHierarchy());
             f.setGenericString(call.getGenericString());

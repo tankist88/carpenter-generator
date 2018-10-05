@@ -14,7 +14,7 @@ import static com.github.tankist88.carpenter.core.property.AbstractGenerationPro
 import static com.github.tankist88.carpenter.generator.TestGenerator.TEST_INST_VAR_NAME;
 import static com.github.tankist88.carpenter.generator.enums.TestFieldCategory.MOCK_FIELD;
 import static com.github.tankist88.carpenter.generator.enums.TestFieldCategory.TEST_CLASS;
-import static com.github.tankist88.carpenter.generator.util.GenerateUtil.*;
+import static com.github.tankist88.carpenter.generator.util.GenerateUtils.*;
 import static com.github.tankist88.object2source.util.GenerationUtil.getClassShort;
 import static com.github.tankist88.object2source.util.GenerationUtil.getClearedClassName;
 import static org.apache.commons.lang3.StringUtils.isNoneBlank;

@@ -14,7 +14,7 @@ import java.io.FileInputStream;
 import java.util.*;
 
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.OBJ_FILE_EXTENSION;
-import static com.github.tankist88.carpenter.generator.util.GenerateUtil.getFileList;
+import static com.github.tankist88.carpenter.generator.util.GenerateUtils.getFileList;
 
 public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<MethodCallInfo> {
 

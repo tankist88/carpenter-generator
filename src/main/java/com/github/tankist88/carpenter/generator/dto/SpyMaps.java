@@ -22,4 +22,11 @@ public class SpyMaps {
         }
         return targetSpyMap;
     }
+
+    public SpyMaps copy() {
+        SpyMaps result = new SpyMaps();
+        result.getReturnSpyMap().putAll(getReturnSpyMap());
+        result.getTargetSpyMap().putAll(getTargetSpyMap());
+        return result;
+    }
 }

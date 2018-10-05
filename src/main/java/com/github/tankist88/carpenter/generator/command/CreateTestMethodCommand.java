@@ -14,6 +14,7 @@ import com.github.tankist88.carpenter.generator.dto.unit.ClassExtInfo;
 import com.github.tankist88.carpenter.generator.dto.unit.imports.ImportInfo;
 import com.github.tankist88.carpenter.generator.dto.unit.method.MethodExtInfo;
 import com.github.tankist88.carpenter.generator.extension.assertext.AssertExtension;
+import com.github.tankist88.carpenter.generator.service.MockCreator;
 import com.github.tankist88.object2source.dto.ProviderInfo;
 import com.github.tankist88.object2source.dto.ProviderResult;
 
@@ -23,9 +24,12 @@ import static com.github.tankist88.carpenter.core.property.AbstractGenerationPro
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.TAB;
 import static com.github.tankist88.carpenter.generator.TestGenerator.*;
 import static com.github.tankist88.carpenter.generator.command.CreateMockFieldCommand.CREATE_INST_METHOD;
-import static com.github.tankist88.carpenter.generator.util.ConvertUtil.toMethodExtInfo;
-import static com.github.tankist88.carpenter.generator.util.GenerateUtil.*;
+import static com.github.tankist88.carpenter.generator.util.ConvertUtils.toMethodExtInfo;
+import static com.github.tankist88.carpenter.generator.util.GenerateUtils.*;
+import static com.github.tankist88.carpenter.generator.util.MockCreateUtils.createMock;
 import static com.github.tankist88.carpenter.generator.util.TypeHelper.*;
+import static com.github.tankist88.carpenter.generator.util.classfields.FilterUtils.filterFieldPropByServiceClasses;
+import static com.github.tankist88.carpenter.generator.util.classfields.FilterUtils.filterFieldPropBySpyMaps;
 import static com.github.tankist88.object2source.util.AssigmentUtil.VAR_NAME_PLACEHOLDER;
 import static com.github.tankist88.object2source.util.GenerationUtil.*;
 import static java.lang.reflect.Modifier.isAbstract;
@@ -42,6 +46,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     public static final String HASH_CODE_SEPARATOR = "_";
     public static final String TEST_METHOD_PREFIX = "test";
     public static final String ARRAY_PROVIDER_PREFIX = "getArrProv";
+    public static final String SPY_VAR_NAME_SEPARATOR = ",";
 
     private static final String RESULT_VAR = "result";
     private static final String CONTROL_VAR = "control";
@@ -241,19 +246,28 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 for (Set<MethodCallInfo> multiInner : separatedInners.getMultipleInners()) {
                     allMethods.addAll(multiInner);
                 }
-                fieldProperties = filterFieldPropBySpyMaps(createServiceFields(allMethods, testClassFields), spyMaps);
+                Set<FieldProperties> serviceFields = createServiceFields(allMethods, testClassFields);
+                fieldProperties = filterFieldPropBySpyMaps(serviceFields, spyMaps, testClassFields);
                 if (!isStatic(callInfo.getMethodModifiers())) {
-                    fieldMocks.addAll(createMockInstances(filterFieldPropByServiceClasses(fieldProperties)));
+                    fieldMocks.addAll(createMockInstances(filterFieldPropByServiceClasses(fieldProperties, testClassFields)));
                 }
                 fieldMocks.addAll(createMockStatic(fieldProperties));
             }
             for (MethodCallInfo inner : separatedInners.getSingleInners()) {
-                PreparedMock mock = createSingleMock(inner, fieldProperties, spyMaps);
-                if (mock != null) methodMocks.add(mock);
+                methodMocks.addAll(createMock(inner, fieldProperties, spyMaps, new MockCreator() {
+                    @Override
+                    public PreparedMock createMock(Set<MethodCallInfo> multiInner, Set<FieldProperties> fieldProperties, SpyMaps spyMaps) {
+                        return createSingleMock(multiInner.iterator().next(), fieldProperties, spyMaps);
+                    }
+                }));
             }
             for (Set<MethodCallInfo> multiInner : separatedInners.getMultipleInners()) {
-                PreparedMock mock = createMultipleMock(multiInner, fieldProperties, spyMaps);
-                if (mock != null) methodMocks.add(mock);
+                methodMocks.addAll(createMock(multiInner, fieldProperties, spyMaps, new MockCreator() {
+                    @Override
+                    public PreparedMock createMock(Set<MethodCallInfo> multiInner, Set<FieldProperties> fieldProperties, SpyMaps spyMaps) {
+                        return createMultipleMock(multiInner, fieldProperties, spyMaps);
+                    }
+                }));
             }
         }
         List<PreparedMock> methodList = new ArrayList<>(methodMocks);
@@ -345,60 +359,46 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         sortMethodCallInfos(allMethods);
         int varCounter = 0;
         for (MethodCallInfo inner : allMethods) {
-            for (MethodCallInfo current : allMethods) {
-                if (inner.getReturnArg() == null || inner.getReturnArg().getGenerated() == null) continue;
-                String returnType = inner.getReturnArg().getClassName();
-                if (
-                        inner.getReturnArg().getClassHashCode() == current.getClassHashCode() &&
-                        (inner.getReturnArg().getClassName().equals(current.getClassName()) ||
-                        current.getClassHierarchy().contains(returnType) ||
-                        current.getInterfacesHierarchy().contains(returnType))
-                ) {
-                        result.getReturnSpyMap().put(inner, SPY_VAR_NAME + varCounter);
-                        result.getTargetSpyMap().put(current, SPY_VAR_NAME + varCounter);
+            List<MethodCallInfo> foundSpyMethods = new ArrayList<>();
+            foundSpyMethods.addAll(findSpyLinks(inner, allMethods, true));
+            foundSpyMethods.addAll(findSpyLinks(inner, allMethods, false));
+            for (MethodCallInfo current : foundSpyMethods) {
+                result.getReturnSpyMap().put(inner, SPY_VAR_NAME + varCounter);
+                String fieldVarName = determineVarName(current, testClassFields);
+                String spyVarName = fieldVarName != null ? fieldVarName + SPY_VAR_NAME_SEPARATOR : "";
+                if (result.getTargetSpyMap().containsKey(current)) {
+                    String varName = result.getTargetSpyMap().get(current);
+                    spyVarName += varName + SPY_VAR_NAME_SEPARATOR + SPY_VAR_NAME + varCounter;
+                } else {
+                    spyVarName += SPY_VAR_NAME + varCounter;
                 }
+                result.getTargetSpyMap().put(current, spyVarName);
             }
             varCounter++;
         }
         return result;
     }
-    
-    private Set<FieldProperties> filterFieldPropByServiceClasses(Set<FieldProperties> fieldProperties) {
-        Set<FieldProperties> result = new HashSet<>();
-        for (FieldProperties f : fieldProperties) {
-            List<String> typeHierarchy = new ArrayList<>();
-            typeHierarchy.addAll(f.getClassHierarchy());
-            typeHierarchy.addAll(f.getInterfacesHierarchy());
-            boolean contains = false;
-            for (FieldProperties s : testClassFields) {
-                if (typeHierarchy.contains(s.getClassName())) {
-                    contains = true;
-                    break;
-                }
+
+    private List<MethodCallInfo> findSpyLinks(MethodCallInfo inner, List<MethodCallInfo> allMethods, boolean hashCodeEqualsCheck) {
+        List<MethodCallInfo> result = new ArrayList<>();
+        for (MethodCallInfo current : allMethods) {
+            if (inner.getReturnArg() == null || inner.getReturnArg().getGenerated() == null) continue;
+            boolean hashCodeCheckPassed =
+                    (inner.getReturnArg().getClassHashCode() == current.getClassHashCode() && hashCodeEqualsCheck) ||
+                    !hashCodeEqualsCheck;
+
+            if (hashCodeCheckPassed && calledObjectFromReturn(inner, current)) {
+                result.add(current);
             }
-            if (contains) result.add(f);
         }
         return result;
     }
-    
-    private Set<FieldProperties> filterFieldPropBySpyMaps(Set<FieldProperties> fieldProperties, SpyMaps spyMaps) {
-        Set<FieldProperties> result = new HashSet<>();
-        Set<FieldProperties> filteredByServices = filterFieldPropByServiceClasses(fieldProperties);
-        for (FieldProperties f : fieldProperties) {
-            if (filteredByServices.contains(f) || isStatic(f.getModifiers())) {
-                result.add(f);
-            } else {
-                boolean contains = false;
-                for (MethodCallInfo m : spyMaps.getTargetSpyMap().keySet()) {
-                    if (m.getClassName().equals(f.getClassName()) && m.getUnitName().startsWith(f.getUnitName())) {
-                        contains = true;
-                        break;
-                    }
-                }
-                if (contains) result.add(f);
-            }
-        }
-        return result;
+
+    private boolean calledObjectFromReturn(MethodCallInfo inner, MethodCallInfo current) {
+        String returnType = inner.getReturnArg().getClassName();
+        return (inner.getReturnArg().getClassName().equals(current.getClassName()) ||
+                current.getClassHierarchy().contains(returnType) ||
+                current.getInterfacesHierarchy().contains(returnType));
     }
 
     private String createArrayProvider(Set<MethodCallInfo> innerSet) {

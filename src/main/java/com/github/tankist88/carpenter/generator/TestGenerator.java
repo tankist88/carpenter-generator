@@ -8,7 +8,7 @@ import com.github.tankist88.carpenter.generator.service.LoadDataService;
 import java.lang.reflect.Modifier;
 
 import static com.github.tankist88.carpenter.core.property.GenerationPropertiesFactory.loadProps;
-import static com.github.tankist88.carpenter.generator.util.GenerateUtil.allowedPackage;
+import static com.github.tankist88.carpenter.generator.util.GenerateUtils.allowedPackage;
 import static com.github.tankist88.object2source.util.GenerationUtil.isAnonymousClass;
 
 public class TestGenerator {
