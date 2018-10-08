@@ -89,12 +89,22 @@ public class GenerateUtils {
     public static boolean skipMock(MethodCallInfo inner, MethodCallInfo callInfo, Set<FieldProperties> serviceClasses, Set<FieldProperties> testClassHierarchy, SpyMaps spyMaps) {
         boolean staticMethod = isStatic(inner.getMethodModifiers()) && !isUsePowermock();
         boolean notStaticCallInStaticCtx = isStatic(callInfo.getMethodModifiers()) && !isStatic(inner.getMethodModifiers());
-        boolean varNotFound = 
-                spyMaps != null && 
+
+        boolean innerClassFoundInServices = false;
+        for (FieldProperties f : serviceClasses) {
+            if (f.getClassName().equals(inner.getClassName())) {
+                innerClassFoundInServices = true;
+                break;
+            }
+        }
+
+        boolean varNotFound =
                 !isCreateMockFields() && 
-                !isStatic(inner.getMethodModifiers()) && 
-                determineVarName(inner, serviceClasses) == null
-                && !spyMaps.getTargetSpyMap().containsKey(inner);
+                !isStatic(inner.getMethodModifiers()) &&
+                !innerClassFoundInServices &&
+                spyMaps != null &&
+                !spyMaps.getTargetSpyMap().containsKey(inner) &&
+                !spyMaps.getReturnSpyMap().containsKey(inner);
         return  staticMethod ||
                 varNotFound || 
                 notStaticCallInStaticCtx || 
@@ -140,24 +150,29 @@ public class GenerateUtils {
         for (MethodCallInfo call : sortedCallInfos) {
             String checkUnitName = determineVarName(call, serviceClasses);
             if (checkUnitName != null && !varNameUniqueSet.add(checkUnitName)) continue;
-            FieldProperties f = new FieldProperties();
-            f.setClassName(call.getClassName());
-            f.setUnitName(createMockVarName(call, serviceClasses));
-            f.setClassHierarchy(call.getClassHierarchy());
-            f.setInterfacesHierarchy(call.getInterfacesHierarchy());
-            f.setGenericString(call.getGenericString());
-            f.setFieldTypeModifiers(call.getClassModifiers());
-            f.setModifiers(call.getMethodModifiers());
-            result.add(f);
+            result.add(createFieldProperties(call, serviceClasses));
         }
         return result;
     }
 
-    public static void sortMethodCallInfos(List<MethodCallInfo> methodCallInfos) {
+    private static FieldProperties createFieldProperties(MethodCallInfo call, Set<FieldProperties> serviceClasses) {
+        if (call == null) return null;
+        FieldProperties f = new FieldProperties();
+        f.setClassName(call.getClassName());
+        f.setUnitName(createMockVarName(call, serviceClasses));
+        f.setClassHierarchy(call.getClassHierarchy());
+        f.setInterfacesHierarchy(call.getInterfacesHierarchy());
+        f.setGenericString(call.getGenericString());
+        f.setFieldTypeModifiers(call.getClassModifiers());
+        f.setModifiers(call.getMethodModifiers());
+        return f;
+    }
+
+    public static void sortMethodCallInfos(List<? extends MethodCallInfo> methodCallInfos) {
         Collections.sort(methodCallInfos, new Comparator<MethodCallInfo>() {
             @Override
             public int compare(MethodCallInfo o1, MethodCallInfo o2) {
-                return Long.compare(o1.getCallTime(), o2.getCallTime());
+                return Long.compare(o1.getStartTime(), o2.getStartTime());
             }
         });
     }

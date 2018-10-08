@@ -121,6 +121,10 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         builder.append(TAB + TEST_ANNOTATION + "\n")
                .append(TAB + "public void ").append(testMethodName).append(" throws Exception {\n");
 
+        if (callInfo.getUnitName().contains("sendClientNotification")) {
+            int a = 2;
+        }
+
         List<PreparedMock> mocks = createMocks();
 
         if (!isCreateMockFields()) {
@@ -212,7 +216,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
             String argName = "_arg" + i;
             providerBuilder.append(createVariableAssignment(iterator.next(), argName));
             argBuilder.append(argName);
-            if(iterator.hasNext()) argBuilder.append(", ");
+            if (iterator.hasNext()) argBuilder.append(", ");
             i++;
         }
         builder.append(providerBuilder.toString());

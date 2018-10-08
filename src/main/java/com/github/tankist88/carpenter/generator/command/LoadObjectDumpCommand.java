@@ -15,6 +15,7 @@ import java.util.*;
 
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.OBJ_FILE_EXTENSION;
 import static com.github.tankist88.carpenter.generator.util.GenerateUtils.getFileList;
+import static com.github.tankist88.carpenter.generator.util.GenerateUtils.sortMethodCallInfos;
 
 public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<MethodCallInfo> {
 
@@ -43,7 +44,7 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
     }
 
     private List<MethodCallInfo> loadObjectData() throws CallerNotFoundException, DeserializationException {
-        Map<String, Set<MethodCallTraceInfo>> commonDataMap = new HashMap<>();
+        Map<String, List<MethodCallTraceInfo>> commonDataMap = new HashMap<>();
 
         for (File objDump : getFileList(new File(props.getObjectDumpDir()), OBJ_FILE_EXTENSION)) {
             String filename = objDump.getName();
@@ -65,9 +66,14 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
             } catch (Exception ex) {
                 throw new DeserializationException(ex.getMessage(), ex);
             }
-            Set<MethodCallTraceInfo> methodSet = commonDataMap.get(callTraceInfo.getKey());
+
+            if (callTraceInfo.getKey().contains("sendClientNotification")) {
+                int a = 2;
+            }
+
+            List<MethodCallTraceInfo> methodSet = commonDataMap.get(callTraceInfo.getKey());
             if (methodSet == null) {
-                methodSet = new HashSet<>();
+                methodSet = new ArrayList<>();
                 commonDataMap.put(callTraceInfo.getKey(), methodSet);
             }
             methodSet.add(callTraceInfo);
@@ -77,21 +83,19 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
         for (Set<MethodCallTraceInfo> values : commonDataMap.values()) {
             sortedList.addAll(values);
         }
-        Collections.sort(sortedList, new Comparator<MethodCallTraceInfo>() {
-            @Override
-            public int compare(MethodCallTraceInfo o1, MethodCallTraceInfo o2) {
-                return (o1.getCallTime() > o2.getCallTime()) ? 1 : -1;
-            }
-        });
+        sortMethodCallInfos(sortedList);
         for (MethodCallTraceInfo value : sortedList) {
             String upLevelKey = value.getTraceAnalyzeData().getUpLevelElementKey();
+            if (upLevelKey.contains("sendClientNotification")) {
+                int a = 2;
+            }
             if (upLevelKey == null) {
                 throw new CallerNotFoundException("FATAL ERROR!!! Can't determine caller for " + value);
             }
             Set<MethodCallTraceInfo> callers = commonDataMap.get(upLevelKey);
             if (callers != null) {
                 for (MethodCallTraceInfo m : callers) {
-                    if (m != null && !m.getKey().equals(value.getKey())) {
+                    if (m != null && !m.getKey().equals(value.getKey()) && value.getStartTime() >= m.getStartTime() && value.getEndTime() <= m.getEndTime()) {
                         m.getInnerMethods().add(value);
                     }
                 }
