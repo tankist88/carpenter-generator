@@ -121,10 +121,6 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         builder.append(TAB + TEST_ANNOTATION + "\n")
                .append(TAB + "public void ").append(testMethodName).append(" throws Exception {\n");
 
-        if (callInfo.getUnitName().contains("sendClientNotification")) {
-            int a = 2;
-        }
-
         List<PreparedMock> mocks = createMocks();
 
         if (!isCreateMockFields()) {
@@ -320,7 +316,9 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 imports.add(createImportInfo(varType, callInfo.getClassName()));
             }
             mockStaticClassNames.add(getClassShort(f.getClassName()));
-            String mock = TAB + TAB + "PowerMockito.mockStatic(" + getClassShort(f.getClassName()) + ".class);\n";
+            boolean testClass = f.getClassName().equals(callInfo.getClassName());
+            String mockMethod = testClass ? "spy" : "mockStatic";
+            String mock = TAB + TAB + "PowerMockito." + mockMethod + "(" + getClassShort(f.getClassName()) + ".class);\n";
             result.add(new PreparedMock(mock, null));
         }
         return result;
@@ -363,18 +361,20 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         sortMethodCallInfos(allMethods);
         int varCounter = 0;
         for (MethodCallInfo inner : allMethods) {
+            if (inner.getReturnArg() == null || inner.getReturnArg().getGenerated() == null) continue;
             List<MethodCallInfo> foundSpyMethods = new ArrayList<>();
             foundSpyMethods.addAll(findSpyLinks(inner, allMethods, true));
             foundSpyMethods.addAll(findSpyLinks(inner, allMethods, false));
             for (MethodCallInfo current : foundSpyMethods) {
-                result.getReturnSpyMap().put(inner, SPY_VAR_NAME + varCounter);
+                String varContextName = SPY_VAR_NAME + varCounter;
+                result.getReturnSpyMap().put(inner, varContextName);
                 String fieldVarName = determineVarName(current, testClassFields);
                 String spyVarName = fieldVarName != null ? fieldVarName + SPY_VAR_NAME_SEPARATOR : "";
                 if (result.getTargetSpyMap().containsKey(current)) {
                     String varName = result.getTargetSpyMap().get(current);
-                    spyVarName += varName + SPY_VAR_NAME_SEPARATOR + SPY_VAR_NAME + varCounter;
+                    spyVarName += varName + SPY_VAR_NAME_SEPARATOR + varContextName;
                 } else {
-                    spyVarName += SPY_VAR_NAME + varCounter;
+                    spyVarName += varContextName;
                 }
                 result.getTargetSpyMap().put(current, spyVarName);
             }
@@ -386,7 +386,6 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private List<MethodCallInfo> findSpyLinks(MethodCallInfo inner, List<MethodCallInfo> allMethods, boolean hashCodeEqualsCheck) {
         List<MethodCallInfo> result = new ArrayList<>();
         for (MethodCallInfo current : allMethods) {
-            if (inner.getReturnArg() == null || inner.getReturnArg().getGenerated() == null) continue;
             boolean hashCodeCheckPassed =
                     (inner.getReturnArg().getClassHashCode() == current.getClassHashCode() && hashCodeEqualsCheck) ||
                     !hashCodeEqualsCheck;
@@ -497,9 +496,11 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
     private String createWhen(MethodCallInfo inner, Set<FieldProperties> serviceClasses, SpyMaps spyMaps) {
         StringBuilder mockBuilder = new StringBuilder();
         if (isUsePowermock() && isStatic(inner.getMethodModifiers())) {
+            String clearedType = getClearedClassName(inner.getNearestInstantAbleClass());
             mockBuilder
-                    .append(getClassShort(inner.getClassName())).append(".class, ")
+                    .append(getClassShort(clearedType)).append(".class, ")
                     .append("\"").append(inner.getUnitName()).append("\"");
+            imports.add(createImportInfo(clearedType, callInfo.getClassName()));
             if (inner.getArguments().size() > 0) {
                 mockBuilder.append(", ");
                 appendMockArguments(mockBuilder, inner, imports);
@@ -575,15 +576,17 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         if (providerResult != null) {
             MethodBaseInfo dp = getProviderNameAndUpdateState(providerResult);
             result = dp.getUnitName();
-            if(!isPrimitive(dp.getClassName()) && !isWrapper(dp.getClassName()) && !dp.getClassName().equals(String.class.getName())) {
+            String className = dp.getClassName().replace("[", "").replace("]", "");
+            if (!isPrimitive(className) && !isWrapper(className) && !className.equals(String.class.getName())) {
                 String importClass = dp.getClassName()+ "." + dp.getUnitName().substring(0, dp.getUnitName().indexOf("("));
                 imports.add(createImportInfo(importClass, callInfo.getClassName(), true));
             }
         } else {
             String dpType = arg.getNearestInstantAbleClass();
             result = "(" + getClassShort(convertPrimitiveToWrapper(dpType)) + ") null";
-            if(!isPrimitive(dpType) && !isWrapper(dpType) && !dpType.equals(String.class.getName())) {
-                imports.add(createImportInfo(dpType, callInfo.getClassName()));
+            String className = dpType.replace("[", "").replace("]", "");
+            if (!isPrimitive(className) && !isWrapper(className) && !className.equals(String.class.getName())) {
+                imports.add(createImportInfo(className, callInfo.getClassName()));
             }
         }
         return result;

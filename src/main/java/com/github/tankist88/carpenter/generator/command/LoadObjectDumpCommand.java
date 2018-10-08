@@ -11,7 +11,10 @@ import org.apache.commons.lang3.SerializationUtils;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.github.tankist88.carpenter.core.property.AbstractGenerationProperties.OBJ_FILE_EXTENSION;
 import static com.github.tankist88.carpenter.generator.util.GenerateUtils.getFileList;
@@ -44,6 +47,47 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
     }
 
     private List<MethodCallInfo> loadObjectData() throws CallerNotFoundException, DeserializationException {
+        Map<String, List<MethodCallTraceInfo>> commonDataMap = loadMethodsFromFiles();
+        linkingMethods(commonDataMap);
+        return applyDuplicationFilter(commonDataMap);
+    }
+
+    private List<MethodCallInfo> applyDuplicationFilter(Map<String, List<MethodCallTraceInfo>> commonDataMap) {
+        List<MethodCallInfo> filteredList = new ArrayList<>();
+        for (List<MethodCallTraceInfo> values : commonDataMap.values()) {
+            sortMethodCallInfos(values);
+            MethodCallTraceInfo maxInnersCall = values.iterator().next();
+            for (MethodCallTraceInfo value : values) {
+                if (value.getInnerMethods().size() > maxInnersCall.getInnerMethods().size()) {
+                    maxInnersCall = value;
+                }
+            }
+            filteredList.add(maxInnersCall);
+        }
+        return filteredList;
+    }
+
+    private void linkingMethods(Map<String, List<MethodCallTraceInfo>> commonDataMap) throws CallerNotFoundException {
+        for (List<MethodCallTraceInfo> values : commonDataMap.values()) {
+            for (MethodCallTraceInfo value : values) {
+                String upLevelKey = value.getTraceAnalyzeData().getUpLevelElementKey();
+                if (upLevelKey == null) {
+                    throw new CallerNotFoundException("FATAL ERROR!!! Can't determine caller for " + value);
+                }
+                List<MethodCallTraceInfo> callers = commonDataMap.get(upLevelKey);
+                if (callers == null) continue;
+                for (MethodCallTraceInfo m : callers) {
+                    if (m == null) continue;
+                    if (m.getKey().equals(value.getKey())) continue;
+                    if (value.getStartTime() >= m.getStartTime() && value.getEndTime() <= m.getEndTime()) {
+                        m.getInnerMethods().add(value);
+                    }
+                }
+            }
+        }
+    }
+
+    private Map<String, List<MethodCallTraceInfo>> loadMethodsFromFiles() throws DeserializationException {
         Map<String, List<MethodCallTraceInfo>> commonDataMap = new HashMap<>();
 
         for (File objDump : getFileList(new File(props.getObjectDumpDir()), OBJ_FILE_EXTENSION)) {
@@ -57,9 +101,9 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
                 }
                 int length = dis.readInt();
                 byte[] data = new byte[length];
-                int byteReaded = dis.read(data);
+                int byteRead = dis.read(data);
                 dis.close();
-                if (byteReaded != length) {
+                if (byteRead != length) {
                     throw new DeserializationException("Can't deserialize object dump " + filename);
                 }
                 callTraceInfo = SerializationUtils.deserialize(data);
@@ -67,41 +111,13 @@ public class LoadObjectDumpCommand extends AbstractReturnClassInfoCommand<Method
                 throw new DeserializationException(ex.getMessage(), ex);
             }
 
-            if (callTraceInfo.getKey().contains("sendClientNotification")) {
-                int a = 2;
+            List<MethodCallTraceInfo> methodList = commonDataMap.get(callTraceInfo.getKey());
+            if (methodList == null) {
+                methodList = new ArrayList<>();
+                commonDataMap.put(callTraceInfo.getKey(), methodList);
             }
-
-            List<MethodCallTraceInfo> methodSet = commonDataMap.get(callTraceInfo.getKey());
-            if (methodSet == null) {
-                methodSet = new ArrayList<>();
-                commonDataMap.put(callTraceInfo.getKey(), methodSet);
-            }
-            methodSet.add(callTraceInfo);
+            methodList.add(callTraceInfo);
         }
-
-        List<MethodCallTraceInfo> sortedList = new ArrayList<>();
-        for (Set<MethodCallTraceInfo> values : commonDataMap.values()) {
-            sortedList.addAll(values);
-        }
-        sortMethodCallInfos(sortedList);
-        for (MethodCallTraceInfo value : sortedList) {
-            String upLevelKey = value.getTraceAnalyzeData().getUpLevelElementKey();
-            if (upLevelKey.contains("sendClientNotification")) {
-                int a = 2;
-            }
-            if (upLevelKey == null) {
-                throw new CallerNotFoundException("FATAL ERROR!!! Can't determine caller for " + value);
-            }
-            Set<MethodCallTraceInfo> callers = commonDataMap.get(upLevelKey);
-            if (callers != null) {
-                for (MethodCallTraceInfo m : callers) {
-                    if (m != null && !m.getKey().equals(value.getKey()) && value.getStartTime() >= m.getStartTime() && value.getEndTime() <= m.getEndTime()) {
-                        m.getInnerMethods().add(value);
-                    }
-                }
-            }
-        }
-
-        return new ArrayList<MethodCallInfo>(sortedList);
+        return commonDataMap;
     }
 }

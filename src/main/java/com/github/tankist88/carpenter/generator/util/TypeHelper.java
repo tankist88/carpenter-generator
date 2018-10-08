@@ -94,10 +94,13 @@ public class TypeHelper {
         } else {
             importInfo.setUnitName(importClass);
         }
+        String body = getClearedClassName(importInfo.getUnitName())
+                .replace("[", "")
+                .replace("]", "");
         if (isStatic) {
-            importInfo.setBody("import static " + getClearedClassName(importInfo.getUnitName()) + ";\n");
+            importInfo.setBody("import static " + body + ";\n");
         } else {
-            importInfo.setBody("import " + getClearedClassName(importInfo.getUnitName()) + ";\n");
+            importInfo.setBody("import " + body + ";\n");
         }
         return importInfo;
     }

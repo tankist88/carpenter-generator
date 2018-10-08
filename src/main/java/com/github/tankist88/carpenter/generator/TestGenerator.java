@@ -53,9 +53,6 @@ public class TestGenerator {
         TestBuilder testBuilder = new TestBuilder();
         testBuilder.appendPreviousGenerated();
         for (MethodCallInfo callInfo : loadDataService.loadObjectDump()) {
-            if (callInfo.getUnitName().contains("notifyNull")) {
-                int a = 2;
-            }
             if(skipTestMethod(callInfo)) continue;
             if (isCreateMockFields()) {
                 testBuilder
