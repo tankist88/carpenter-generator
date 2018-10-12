@@ -610,7 +610,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
         for(MethodCallInfo inner : inners) {
             if (skipMock(inner, callInfo, testClassFields, testClassHierarchy, null)) continue;
             for(MethodCallInfo current : inners) {
-                if (createInnerKey(current).equals(createInnerKey(inner))) {
+                if (createInnerKey(current).equals(createInnerKey(inner)) && !forwardMock(current, callInfo, testClassHierarchy)) {
                     Set<MethodCallInfo> innerSet = innerMap.get(createInnerKey(current));
                     if (innerSet == null) {
                         innerSet = new HashSet<>();
