@@ -40,8 +40,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<ClassExtInfo> {
     private static final int DATA_PROVIDER_MAX_LENGTH_IN_METHODS = 40;
 
-    private static final String GOOD_MOCKITO_VERSION = "2.8.9";
-
     public static final String TEST_ANNOTATION = "@Test";
     public static final String HASH_CODE_SEPARATOR = "_";
     public static final String TEST_METHOD_PREFIX = "test";
@@ -557,7 +555,7 @@ public class CreateTestMethodCommand extends AbstractReturnClassInfoCommand<Clas
                 if(!isPrimitive(arg.getGenericString()) && !isWrapper(arg.getGenericString()) && !arg.getGenericString().equals(String.class.getName())) {
                     imports.add(createImportInfo(arg.getGenericString(), callInfo.getClassName()));
                 }
-            } else if (arg.getGenerated() == null && props.getTargetMockitoVersion().equals(GOOD_MOCKITO_VERSION)) {
+            } else if (arg.getGenerated() == null && props.isUseNullValuesInArgumentMatchers()) {
                 sb.append("null");
             } else {
                 String clearedType = getClearedClassName(arg.getNearestInstantAbleClass());

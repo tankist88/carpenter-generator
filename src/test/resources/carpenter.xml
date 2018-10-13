@@ -10,5 +10,6 @@
     <noZeroArgConstructorTestAllowed>true</noZeroArgConstructorTestAllowed>
     <encoding>windows-1251</encoding>
     <useAnnotationMockStyle>false</useAnnotationMockStyle>
+    <useNullValuesInArgumentMatchers>true</useNullValuesInArgumentMatchers>
     <usePowermock>true</usePowermock>
 </carpenterConfig>
